@@ -21,7 +21,7 @@
 ### 第一步：下載專案
 
 ```bash
-git clone https://github.com/你的帳號/cafevibe.git
+git clone https://github.com/winter-dog-01/CafeVibe.git
 cd cafevibe
 ```
 
