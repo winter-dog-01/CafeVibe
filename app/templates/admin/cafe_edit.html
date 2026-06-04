@@ -1,0 +1,463 @@
+{% extends "admin/base.html" %}
+{% block title %}編輯 {{ cafe.name }} — CafeVibe Admin{% endblock %}
+{% block page_title %}店家編輯器{% endblock %}
+
+
+{% block admin_content %}
+<div x-data="{
+  editName: false,
+  editInfo: false,
+  editDesc: false,
+  editTags: false,
+  saved: {{ 'true' if request.query_params.get('saved') else 'false' }}
+}" class="max-w-3xl">
+
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 text-sm text-coffee/40 mb-5">
+    <a href="/admin/cafes" class="hover:text-caramel transition-colors">咖啡廳管理</a>
+    <span>/</span>
+    <span class="text-coffee/70 truncate">{{ cafe.name }}</span>
+  </div>
+
+  <!-- Saved toast -->
+  <div x-show="saved" x-transition x-init="if(saved) setTimeout(()=>saved=false,3000)"
+       class="mb-4 flex items-center gap-2 bg-matcha/10 text-matcha border border-matcha/20 px-4 py-3 rounded-xl text-sm font-medium">
+    ✅ 已儲存變更
+  </div>
+
+  <!-- Status bar -->
+  <form action="/admin/cafes/{{ cafe.id }}/edit" method="post" enctype="multipart/form-data" id="mainForm">
+    <input type="hidden" name="address" value="{{ cafe.address or '' }}" id="hAddress" />
+    <input type="hidden" name="district" value="{{ cafe.district or '' }}" id="hDistrict" />
+    <input type="hidden" name="phone" value="{{ cafe.phone or '' }}" id="hPhone" />
+    <input type="hidden" name="opening_hours" value="{{ cafe.opening_hours or '' }}" id="hHours" />
+    <input type="hidden" name="instagram_url" value="{{ cafe.instagram_url or '' }}" id="hInstagram" />
+    <input type="hidden" name="description" value="{{ cafe.description or '' }}" id="hDesc" />
+    <input type="hidden" name="name" value="{{ cafe.name }}" id="hName" />
+    {% if cafe.is_active %}<input type="hidden" name="is_active" value="on" />{% endif %}
+    {% if cafe.is_featured %}<input type="hidden" name="is_featured" value="on" />{% endif %}
+    {% for tag in cafe.tags %}
+    <input type="hidden" name="tag_ids" value="{{ tag.id }}" class="savedTagInput" />
+    {% endfor %}
+  </form>
+
+  <div class="flex items-center gap-3 mb-5 flex-wrap">
+    <!-- Active toggle -->
+    <form action="/admin/cafes/{{ cafe.id }}/toggle" method="post" class="inline">
+      <button type="submit"
+              class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors
+                     {% if cafe.is_active %}bg-matcha/10 text-matcha border-matcha/20 hover:bg-matcha/20
+                     {% else %}bg-red-50 text-red-400 border-red-200 hover:bg-red-100{% endif %}">
+        <span class="w-2 h-2 rounded-full {% if cafe.is_active %}bg-matcha{% else %}bg-red-400{% endif %}"></span>
+        {% if cafe.is_active %}上架中（點擊下架）{% else %}已下架（點擊上架）{% endif %}
+      </button>
+    </form>
+    <!-- Featured toggle -->
+    <form action="/admin/cafes/{{ cafe.id }}/toggle-featured" method="post" class="inline">
+      <button type="submit"
+              class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors
+                     {% if cafe.is_featured %}bg-caramel/15 text-caramel border-caramel/25 hover:bg-caramel/25
+                     {% else %}bg-gray-50 text-coffee/40 border-gray-200 hover:bg-gray-100{% endif %}">
+        ★ {% if cafe.is_featured %}精選推薦（點擊取消）{% else %}設為精選{% endif %}
+      </button>
+    </form>
+    <a href="/cafe/{{ cafe.slug }}" target="_blank"
+       class="ml-auto text-xs text-caramel hover:text-brown font-medium flex items-center gap-1">
+      前台預覽 ↗
+    </a>
+  </div>
+
+  <!-- ① 封面照片（Hero 輪播） -->
+  <div class="bg-white rounded-2xl border border-brown/8 overflow-hidden mb-4">
+
+    <!-- Hero 大圖預覽 -->
+    <div class="relative bg-cream-dark" style="height:200px;">
+      {% if cafe.photos %}
+      <img src="{{ cafe.photos[0].url }}" class="w-full h-full object-cover" />
+      {% elif cafe.cover_image_url %}
+      <img src="{{ cafe.cover_image_url }}" class="w-full h-full object-cover" />
+      {% else %}
+      <div class="w-full h-full flex items-center justify-center text-5xl opacity-20">☕</div>
+      {% endif %}
+      <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
+      <div class="absolute bottom-3 left-4 text-white/70 text-xs">
+        Hero 預覽（第一張為主封面）
+      </div>
+      {% if cafe.photos | length > 1 %}
+      <div class="absolute top-3 right-3 bg-black/50 text-white text-xs px-2.5 py-1 rounded-full">
+        共 {{ cafe.photos | length }} 張輪播
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- 照片管理 -->
+    <div class="p-4">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-xs font-semibold text-coffee/40 uppercase tracking-wide">
+          封面照片 <span class="text-coffee/30 font-normal">({{ cafe.photos | length }} 張)</span>
+        </span>
+      </div>
+      <p class="text-xs text-coffee/30 mb-3">多張時在詳細頁頂部輪播顯示，也會以方形格呈現在頁面中段</p>
+
+      <div class="grid grid-cols-4 gap-2 mb-3">
+        {% for photo in cafe.photos %}
+        <div class="relative group rounded-xl overflow-hidden bg-cream-dark cursor-pointer"
+             style="aspect-ratio:1/1;"
+             x-data="{ cover: {{ 'true' if photo.is_cover else 'false' }} }"
+             @click="
+               fetch('/admin/cafes/{{ cafe.id }}/photos/{{ photo.id }}/toggle-cover', { method: 'POST' })
+               .then(r => r.json()).then(d => { cover = d.is_cover })
+             ">
+          <img src="{{ photo.url }}" class="w-full h-full object-cover" />
+          <!-- 選中遮罩 -->
+          <div class="absolute inset-0 transition-all"
+               :class="cover ? 'ring-2 ring-caramel ring-inset bg-caramel/10' : 'group-hover:bg-black/10'"></div>
+          <!-- 輪播 badge -->
+          <div class="absolute top-1.5 left-1.5 transition-all"
+               :class="cover ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'">
+            <span class="text-[9px] font-semibold px-1.5 py-0.5 rounded-full leading-tight shadow"
+                  :class="cover ? 'bg-caramel text-white' : 'bg-white/80 text-coffee'">
+              <span x-text="cover ? '✓ 輪播' : '點選加入'"></span>
+            </span>
+          </div>
+          <!-- 刪除 -->
+          <form action="/admin/cafes/{{ cafe.id }}/photos/{{ photo.id }}/delete" method="post"
+                class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                @click.stop>
+            <button onclick="return confirm('刪除此照片？')"
+                    class="w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full text-[10px] shadow flex items-center justify-center">✕</button>
+          </form>
+        </div>
+        {% endfor %}
+
+        <!-- 上傳格 -->
+        <label class="rounded-xl border-2 border-dashed border-gray-200 hover:border-caramel/40 flex flex-col items-center justify-center cursor-pointer transition-colors bg-gray-50 hover:bg-caramel/5"
+               style="aspect-ratio:1/1;" x-data="{uploading:false}">
+          <span class="text-xl opacity-30" x-text="uploading ? '⏳' : '+'"></span>
+          <span class="text-[10px] text-coffee/40 mt-0.5">新增</span>
+          <input type="file" accept="image/*" class="hidden"
+                 @change="uploading=true" onchange="this.form.submit()"
+                 form="photoForm" name="photo" />
+        </label>
+      </div>
+
+      <form id="photoForm" action="/admin/cafes/{{ cafe.id }}/photos" method="post" enctype="multipart/form-data">
+        <input type="text" name="caption" placeholder="圖片說明（選填）"
+               class="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs text-coffee focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+      </form>
+
+      <!-- 備用封面（卡片縮圖用） -->
+      <div class="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg overflow-hidden bg-cream-dark flex-shrink-0">
+          {% if cafe.cover_image_url %}
+          <img src="{{ cafe.cover_image_url }}" class="w-full h-full object-cover" />
+          {% else %}
+          <div class="w-full h-full flex items-center justify-center text-sm opacity-20">☕</div>
+          {% endif %}
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-medium text-coffee/50">備用封面圖</p>
+          <p class="text-[10px] text-coffee/30">無照片時顯示於列表卡片</p>
+        </div>
+        <label class="text-xs text-caramel hover:text-brown font-medium cursor-pointer">
+          更換
+          <input type="file" name="cover" accept="image/*" form="mainForm" class="hidden"
+                 onchange="document.getElementById('mainForm').submit()" />
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 店名 -->
+  <div class="bg-white rounded-2xl border border-brown/8 p-5 mb-4">
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-xs font-semibold text-coffee/40 uppercase tracking-wide">店名</span>
+      <button type="button" @click="editName=!editName"
+              class="text-xs text-caramel hover:text-brown font-medium">
+        <span x-text="editName ? '取消' : '✏️ 編輯'"></span>
+      </button>
+    </div>
+    <!-- display -->
+    <h2 x-show="!editName" class="text-2xl font-bold text-coffee font-serif">{{ cafe.name }}</h2>
+    <p x-show="!editName" class="text-xs text-coffee/30 mt-0.5 font-mono">/cafe/{{ cafe.slug }}</p>
+    <!-- edit inline -->
+    <div x-show="editName" x-transition>
+      <input type="text" id="nameInput" value="{{ cafe.name }}"
+             class="w-full text-xl font-bold text-coffee px-3 py-2 rounded-xl border border-caramel/40 focus:outline-none focus:ring-2 focus:ring-caramel/30 mb-2" />
+      <button type="button"
+              @click="document.getElementById('hName').value=document.getElementById('nameInput').value; document.getElementById('mainForm').submit()"
+              class="text-sm bg-brown text-cream px-4 py-2 rounded-xl hover:bg-brown-light transition-colors font-semibold">
+        儲存店名
+      </button>
+    </div>
+  </div>
+
+  <!-- ③ 基本資訊 -->
+  <div class="bg-white rounded-2xl border border-brown/8 p-5 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <span class="text-xs font-semibold text-coffee/40 uppercase tracking-wide">基本資訊</span>
+      <button type="button" @click="editInfo=!editInfo"
+              class="text-xs text-caramel hover:text-brown font-medium">
+        <span x-text="editInfo ? '取消' : '✏️ 編輯'"></span>
+      </button>
+    </div>
+    <!-- display -->
+    <div x-show="!editInfo" class="space-y-2.5 text-sm text-coffee/70">
+      <div class="flex gap-2"><span class="opacity-50">📍</span><span>{{ cafe.address or '（未填）' }}{% if cafe.district %} · {{ cafe.district }}{% endif %}</span></div>
+      <div class="flex gap-2"><span class="opacity-50">📞</span><span>{{ cafe.phone or '（未填）' }}</span></div>
+      <div class="flex gap-2"><span class="opacity-50">🕐</span><span>{{ cafe.opening_hours or '（未填）' }}</span></div>
+      <div class="flex gap-2"><span class="opacity-50">📸</span><span>{{ cafe.instagram_url or '（未填）' }}</span></div>
+    </div>
+    <!-- edit -->
+    <div x-show="editInfo" x-transition class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-coffee/40 mb-1 block">地址</label>
+          <input id="inAddress" type="text" value="{{ cafe.address or '' }}"
+                 class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-coffee focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+        </div>
+        <div>
+          <label class="text-xs text-coffee/40 mb-1 block">地區</label>
+          <input id="inDistrict" type="text" value="{{ cafe.district or '' }}"
+                 class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-coffee focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-coffee/40 mb-1 block">電話</label>
+          <input id="inPhone" type="text" value="{{ cafe.phone or '' }}"
+                 class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-coffee focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+        </div>
+        <div>
+          <label class="text-xs text-coffee/40 mb-1 block">營業時間</label>
+          <input id="inHours" type="text" value="{{ cafe.opening_hours or '' }}"
+                 class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-coffee focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-coffee/40 mb-1 block">Instagram URL</label>
+        <input id="inInstagram" type="text" value="{{ cafe.instagram_url or '' }}"
+               class="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-coffee focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+      </div>
+      <button type="button" @click="
+        document.getElementById('hAddress').value=document.getElementById('inAddress').value;
+        document.getElementById('hDistrict').value=document.getElementById('inDistrict').value;
+        document.getElementById('hPhone').value=document.getElementById('inPhone').value;
+        document.getElementById('hHours').value=document.getElementById('inHours').value;
+        document.getElementById('hInstagram').value=document.getElementById('inInstagram').value;
+        document.getElementById('mainForm').submit()"
+              class="text-sm bg-brown text-cream px-4 py-2 rounded-xl hover:bg-brown-light transition-colors font-semibold">
+        儲存資訊
+      </button>
+    </div>
+  </div>
+
+  <!-- ④ 店家簡介 -->
+  <div class="bg-white rounded-2xl border border-brown/8 p-5 mb-4">
+    <div class="flex items-center justify-between mb-3">
+      <span class="text-xs font-semibold text-coffee/40 uppercase tracking-wide">店家簡介</span>
+      <button type="button" @click="editDesc=!editDesc"
+              class="text-xs text-caramel hover:text-brown font-medium">
+        <span x-text="editDesc ? '取消' : '✏️ 編輯'"></span>
+      </button>
+    </div>
+    <p x-show="!editDesc" class="text-sm text-coffee/70 leading-relaxed whitespace-pre-line">
+      {{ cafe.description or '（尚未填寫簡介）' }}
+    </p>
+    <div x-show="editDesc" x-transition class="space-y-2">
+      <textarea id="inDesc" rows="6"
+                class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-coffee resize-none focus:outline-none focus:ring-2 focus:ring-caramel/30">{{ cafe.description or '' }}</textarea>
+      <button type="button" @click="
+        document.getElementById('hDesc').value=document.getElementById('inDesc').value;
+        document.getElementById('mainForm').submit()"
+              class="text-sm bg-brown text-cream px-4 py-2 rounded-xl hover:bg-brown-light transition-colors font-semibold">
+        儲存簡介
+      </button>
+    </div>
+  </div>
+
+  <!-- ⑥ 標籤 -->
+  <div class="bg-white rounded-2xl border border-brown/8 p-5 mb-4"
+       x-data="{
+         editTags: false,
+         selected: {{ cafe.tags | map(attribute='id') | list | tojson }}
+       }">
+    <div class="flex items-center justify-between mb-3">
+      <span class="text-xs font-semibold text-coffee/40 uppercase tracking-wide">標籤</span>
+      <button type="button" @click="editTags=!editTags"
+              class="text-xs text-caramel hover:text-brown font-medium">
+        <span x-text="editTags ? '取消' : '✏️ 編輯'"></span>
+      </button>
+    </div>
+    <!-- display -->
+    <div x-show="!editTags" class="flex flex-wrap gap-1.5">
+      {% for tag in cafe.tags %}
+      <span class="text-xs bg-caramel/10 text-caramel px-3 py-1 rounded-full">{{ tag.icon }} {{ tag.name }}</span>
+      {% else %}
+      <span class="text-xs text-coffee/30">（尚未選擇標籤）</span>
+      {% endfor %}
+    </div>
+    <!-- edit -->
+    <div x-show="editTags" x-transition class="space-y-3">
+      <div class="flex flex-wrap gap-2">
+        {% for tag in tags %}
+        <label @click="
+          const id={{ tag.id }};
+          const idx=selected.indexOf(id);
+          if(idx===-1) selected.push(id); else selected.splice(idx,1);"
+               class="flex items-center gap-1.5 cursor-pointer select-none px-3 py-1.5 rounded-full border text-xs font-medium transition-colors"
+               :class="selected.includes({{ tag.id }}) ? 'bg-brown text-cream border-brown' : 'bg-white text-coffee/60 border-gray-200 hover:border-caramel/40'">
+          {{ tag.icon }} {{ tag.name }}
+        </label>
+        {% endfor %}
+      </div>
+      <button type="button" @click="
+        document.querySelectorAll('.savedTagInput').forEach(el=>el.remove());
+        selected.forEach(id=>{
+          const inp=document.createElement('input');
+          inp.type='hidden'; inp.name='tag_ids'; inp.value=id;
+          inp.className='savedTagInput';
+          document.getElementById('mainForm').appendChild(inp);
+        });
+        document.getElementById('mainForm').submit()"
+              class="text-sm bg-brown text-cream px-4 py-2 rounded-xl hover:bg-brown-light transition-colors font-semibold">
+        儲存標籤
+      </button>
+    </div>
+  </div>
+
+  <!-- ⑧ 指派店長 -->
+  <div class="bg-white rounded-2xl border border-brown/8 p-5 mb-4"
+       x-data="{
+         query: '',
+         results: [],
+         selected: { id: {{ cafe.owner_id or 0 }}, name: '', email: '' },
+         open: false,
+         timer: null,
+         search() {
+           clearTimeout(this.timer);
+           if (this.query.length < 1) { this.results = []; this.open = false; return; }
+           this.timer = setTimeout(async () => {
+             const r = await fetch('/admin/users/search?q=' + encodeURIComponent(this.query));
+             this.results = await r.json();
+             this.open = this.results.length > 0;
+           }, 250);
+         },
+         pick(u) {
+           this.selected = u;
+           this.query = u.email;
+           this.open = false;
+         },
+         clear() {
+           this.selected = { id: 0, name: '', email: '' };
+           this.query = '';
+           this.results = [];
+         }
+       }">
+    <span class="text-xs font-semibold text-coffee/40 uppercase tracking-wide block mb-3">指派店長</span>
+
+    {% if cafe.owner_id %}
+    <div class="flex items-center gap-2 mb-3 px-3 py-2 bg-caramel/8 rounded-xl border border-caramel/20">
+      <div class="w-7 h-7 rounded-full bg-caramel flex items-center justify-center text-cream text-xs font-bold flex-shrink-0">
+        {% set cur = owners | selectattr('id', 'equalto', cafe.owner_id) | first | default(none) %}
+        {% if cur %}{{ (cur.display_name or cur.username)[:1].upper() }}{% else %}?{% endif %}
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-semibold text-coffee truncate">
+          {% if cur %}{{ cur.display_name or cur.username }}{% else %}已指派（帳號不存在）{% endif %}
+        </p>
+        <p class="text-xs text-coffee/40 truncate">{% if cur %}{{ cur.email }}{% endif %}</p>
+      </div>
+      <span class="text-[10px] bg-caramel/15 text-caramel px-2 py-0.5 rounded-full font-medium flex-shrink-0">現任店長</span>
+    </div>
+    {% endif %}
+
+    <form action="/admin/cafes/{{ cafe.id }}/assign-owner" method="post">
+      <input type="hidden" name="owner_id" :value="selected.id" />
+
+      <div class="relative mb-2">
+        <input type="text" x-model="query" @input="search()" @focus="if(results.length) open=true"
+               @keydown.escape="open=false" @click.outside="open=false"
+               placeholder="輸入信箱或姓名搜尋會員..."
+               class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-coffee focus:outline-none focus:ring-2 focus:ring-caramel/30 pr-8" />
+        <button type="button" x-show="query" @click="clear()"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-coffee/30 hover:text-coffee/60 text-lg leading-none">×</button>
+
+        <!-- Dropdown -->
+        <div x-show="open" x-transition:enter="transition ease-out duration-100"
+             x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
+             class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
+          <template x-for="u in results" :key="u.id">
+            <button type="button" @click="pick(u)"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-caramel/8 transition-colors text-left">
+              <div class="w-7 h-7 rounded-full bg-brown flex items-center justify-center text-cream text-xs font-bold flex-shrink-0"
+                   x-text="u.name[0].toUpperCase()"></div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-coffee truncate" x-text="u.name"></p>
+                <p class="text-xs text-coffee/40 truncate" x-text="u.email"></p>
+              </div>
+              <span x-show="u.role === 'owner'"
+                    class="text-[10px] bg-caramel/15 text-caramel px-2 py-0.5 rounded-full font-medium flex-shrink-0">店長</span>
+            </button>
+          </template>
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <button type="submit" :disabled="!selected.id"
+                class="px-4 py-2 bg-brown text-cream text-sm font-semibold rounded-xl hover:bg-brown-light transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+          指派
+        </button>
+        {% if cafe.owner_id %}
+        <button type="submit" @click="selected.id=0" formnovalidate
+                class="px-4 py-2 text-sm text-red-400 hover:text-red-600 border border-red-200 hover:border-red-400 rounded-xl transition-colors font-medium">
+          移除店長
+        </button>
+        {% endif %}
+      </div>
+    </form>
+
+    <p class="text-xs text-coffee/40 mt-2">
+      ℹ️ 指派後該帳號可登入 <a href="/owner" class="text-caramel hover:underline">/owner</a> 管理預約
+    </p>
+  </div>
+
+  <!-- ⑨ 危險區域 -->
+  <div class="border border-red-200 rounded-2xl p-5 mb-4 bg-red-50/40">
+    <span class="text-xs font-semibold text-red-400 uppercase tracking-wide block mb-3">危險區域</span>
+    <p class="text-xs text-red-400/80 mb-3">永久刪除此咖啡廳，包含所有照片、評論、預約與揪團記錄，此操作無法復原。</p>
+    <form action="/admin/cafes/{{ cafe.id }}/delete" method="post"
+          onsubmit="return confirm('確定永久刪除「{{ cafe.name }}」？\n此操作無法復原。')">
+      <button type="submit"
+              class="text-sm px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-xl transition-colors">
+        永久刪除此咖啡廳
+      </button>
+    </form>
+  </div>
+
+  <!-- ⑩ 數據 (read-only) -->
+  <div class="bg-white rounded-2xl border border-brown/8 p-5 mb-6">
+    <span class="text-xs font-semibold text-coffee/40 uppercase tracking-wide block mb-3">評分數據（唯讀）</span>
+    {% if cafe.avg_scores.overall > 0 %}
+    <div class="flex items-center gap-4 mb-3">
+      <span class="font-serif text-3xl font-bold text-caramel">{{ "%.1f"|format(cafe.avg_scores.overall) }}</span>
+      <div class="text-sm text-coffee/50">{{ cafe.review_count }} 則評論</div>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      {% for dim, label in [('coffee','咖啡'),('dessert','甜點'),('ambience','氣氛'),('focus','專注')] %}
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-coffee/40 w-8">{{ label }}</span>
+        <div class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div class="h-full bg-caramel/60 rounded-full" style="width:{{ (cafe.avg_scores[dim]/5*100)|int }}%"></div>
+        </div>
+        <span class="text-xs text-coffee/50 w-6">{{ "%.1f"|format(cafe.avg_scores[dim]) }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-coffee/30">尚無評論數據</p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

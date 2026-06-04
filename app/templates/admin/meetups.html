@@ -1,0 +1,119 @@
+{% extends "admin/base.html" %}
+{% block title %}揪團管理 — CafeVibe Admin{% endblock %}
+{% block page_title %}揪團管理{% endblock %}
+
+{% block admin_content %}
+<div class="bg-white rounded-2xl border border-brown/8 overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+    <h2 class="font-semibold text-coffee text-sm">所有揪團 ({{ meetups | length }})</h2>
+    <div class="flex gap-2">
+      <span class="text-xs bg-matcha/15 text-matcha px-3 py-1 rounded-full">
+        招募中：{{ meetups | selectattr('status.value', 'equalto', 'open') | list | length }}
+      </span>
+      <span class="text-xs bg-red-100 text-red-500 px-3 py-1 rounded-full">
+        已額滿：{{ meetups | selectattr('status.value', 'equalto', 'full') | list | length }}
+      </span>
+      <span class="text-xs bg-gray-100 text-gray-500 px-3 py-1 rounded-full">
+        已結束：{{ meetups | selectattr('status.value', 'equalto', 'closed') | list | length }}
+      </span>
+    </div>
+  </div>
+
+  <div class="divide-y divide-gray-50">
+    {% for meetup in meetups %}
+    <div class="px-6 py-4 hover:bg-gray-50/50 transition-colors">
+      <div class="flex items-start justify-between gap-4">
+
+        <div class="flex items-start gap-3 flex-1 min-w-0">
+          <!-- Status dot -->
+          <div class="mt-1 flex-shrink-0">
+            {% if meetup.status.value == 'open' %}
+            <span class="inline-block w-2 h-2 rounded-full bg-matcha"></span>
+            {% elif meetup.status.value == 'full' %}
+            <span class="inline-block w-2 h-2 rounded-full bg-red-400"></span>
+            {% else %}
+            <span class="inline-block w-2 h-2 rounded-full bg-gray-300"></span>
+            {% endif %}
+          </div>
+
+          <div class="flex-1 min-w-0">
+            <!-- Title + meta -->
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              <span class="font-semibold text-coffee text-sm">{{ meetup.title }}</span>
+              {% if meetup.status.value == 'open' %}
+              <span class="text-[10px] bg-matcha/15 text-matcha px-2 py-0.5 rounded-full font-medium">招募中</span>
+              {% elif meetup.status.value == 'full' %}
+              <span class="text-[10px] bg-red-100 text-red-500 px-2 py-0.5 rounded-full font-medium">已額滿</span>
+              {% else %}
+              <span class="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">已結束</span>
+              {% endif %}
+            </div>
+
+            <!-- Organizer + cafe + time -->
+            <div class="flex items-center gap-2 text-xs text-coffee/50 flex-wrap">
+              <span>👤 {{ meetup.organizer.display_name or meetup.organizer.username }}</span>
+              <span class="text-coffee/20">·</span>
+              <a href="/cafe/{{ meetup.cafe.slug }}" target="_blank" class="text-caramel hover:text-brown font-medium transition-colors">☕ {{ meetup.cafe.name }}</a>
+              <span class="text-coffee/20">·</span>
+              <span>📅 {{ meetup.scheduled_at.strftime('%Y/%m/%d %H:%M') }}</span>
+              <span class="text-coffee/20">·</span>
+              <span>👥 {{ meetup.members | length }} / {{ meetup.max_members }} 人</span>
+            </div>
+
+            <!-- Tags -->
+            {% if meetup.purpose_tags %}
+            <div class="flex flex-wrap gap-1 mt-1.5">
+              {% for tag in meetup.purpose_tags.split(',') %}
+              {% if tag.strip() %}
+              <span class="text-[10px] bg-caramel/10 text-caramel px-2 py-0.5 rounded-full">{{ tag.strip() }}</span>
+              {% endif %}
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Description -->
+            {% if meetup.description %}
+            <p class="text-xs text-coffee/40 mt-1.5 line-clamp-1">{{ meetup.description }}</p>
+            {% endif %}
+
+            <!-- Members -->
+            {% if meetup.members %}
+            <div class="flex items-center gap-1 mt-2">
+              {% for mem in meetup.members[:8] %}
+              <div class="w-5 h-5 rounded-full bg-brown flex items-center justify-center text-cream text-[8px] font-bold border border-white -ml-0.5 first:ml-0"
+                   title="{{ mem.user.display_name or mem.user.username }}">
+                {{ (mem.user.display_name or mem.user.username)[:1].upper() }}
+              </div>
+              {% endfor %}
+              {% if meetup.members | length > 8 %}
+              <span class="text-[10px] text-coffee/40 ml-1">+{{ meetup.members|length - 8 }}</span>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <span class="text-xs text-coffee/30">
+            {{ meetup.created_at.strftime('%m/%d') if meetup.created_at else '' }}
+          </span>
+          <form action="/admin/meetups/{{ meetup.id }}/delete" method="post" class="inline"
+                onsubmit="return confirm('確定要刪除揪團「{{ meetup.title }}」？此操作無法復原。')">
+            <button class="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-colors font-medium">
+              刪除
+            </button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+    {% else %}
+    <div class="px-6 py-16 text-center">
+      <p class="text-4xl mb-3 opacity-20">🎉</p>
+      <p class="text-coffee/40 text-sm">目前沒有任何揪團</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,284 @@
+{% extends "base.html" %}
+{% block title %}揪團布告欄 — CafeVibe{% endblock %}
+{% block og_title %}揪團布告欄 — CafeVibe{% endblock %}
+{% block og_description %}找人一起去咖啡廳！瀏覽所有開放揪團，加入或發起屬於你的跑咖聚會。{% endblock %}
+
+{% block extra_head %}
+<style>
+  .meetup-card { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+  .meetup-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(44,24,16,0.10); }
+  .progress-bar { transition: width 0.5s ease; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set joined_id = request.query_params.get('joined') %}
+<div class="min-h-screen pt-24 pb-16"
+     {% if joined_id %}
+     x-data="{ toast: true }"
+     x-init="setTimeout(() => toast = false, 4000)"
+     {% endif %}>
+
+  <!-- Success Toast -->
+  {% if joined_id %}
+  <div x-show="toast"
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="opacity-0 translate-y-4"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="opacity-100 translate-y-0"
+       x-transition:leave-end="opacity-0 translate-y-4"
+       class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-coffee text-cream px-5 py-3.5 rounded-2xl shadow-xl text-sm font-medium whitespace-nowrap">
+    <span class="text-base">🎉</span>
+    <span>成功加入揪團！前往 <a href="/meetups/{{ joined_id }}" class="underline font-semibold hover:text-caramel">揪團詳情頁</a> 與成員聊天</span>
+    <button @click="toast = false" class="ml-2 text-cream/50 hover:text-cream text-lg leading-none">✕</button>
+  </div>
+  {% endif %}
+
+  <div class="max-w-6xl mx-auto px-4 sm:px-6">
+
+    <!-- Header -->
+    <div class="text-center mb-10 reveal">
+      <p class="text-xs font-semibold text-caramel uppercase tracking-widest mb-2">MEETUP BOARD</p>
+      <h1 class="font-serif text-4xl font-bold text-coffee mb-3">揪團布告欄</h1>
+      <p class="text-coffee/60 text-base max-w-md mx-auto">找人一起跑咖，讓每次出發都不孤單</p>
+    </div>
+
+    <!-- Search + filter bar -->
+    <form method="get" action="/meetups" class="flex flex-wrap gap-3 mb-8 reveal">
+      <div class="flex-1 min-w-60 relative">
+        <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-coffee/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input type="text" name="q" value="{{ query }}" placeholder="搜尋揪團名稱、目的標籤..."
+               class="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-brown/15 bg-white text-sm text-coffee placeholder-coffee/30 focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+      </div>
+      <select name="cafe_id" class="px-4 py-2.5 rounded-2xl border border-brown/15 bg-white text-sm text-coffee focus:outline-none focus:ring-2 focus:ring-caramel/30 min-w-40">
+        <option value="0">全部店家</option>
+        {% for cafe in cafes %}
+        <option value="{{ cafe.id }}" {% if selected_cafe == cafe.id %}selected{% endif %}>{{ cafe.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="px-6 py-2.5 bg-brown text-cream text-sm font-semibold rounded-2xl hover:bg-brown-light transition-colors">
+        搜尋
+      </button>
+      {% if current_user %}
+      <button type="button" onclick="document.getElementById('newMeetupModal').classList.remove('hidden')"
+              class="px-6 py-2.5 bg-caramel text-white text-sm font-semibold rounded-2xl hover:bg-caramel-light transition-colors">
+        + 發起揪團
+      </button>
+      {% else %}
+      <a href="/login" class="px-6 py-2.5 bg-caramel text-white text-sm font-semibold rounded-2xl hover:bg-caramel-light transition-colors">
+        登入後發起揪團
+      </a>
+      {% endif %}
+    </form>
+
+    <!-- Stats bar -->
+    <div class="flex items-center gap-2 mb-6 text-sm text-coffee/50">
+      <span>找到 <strong class="text-coffee">{{ total }}</strong> 個揪團</span>
+      {% if query or selected_cafe %}
+      <a href="/meetups" class="text-xs text-caramel hover:underline ml-2">清除篩選</a>
+      {% endif %}
+    </div>
+
+    <!-- Meetup grid -->
+    {% if meetups %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {% for meetup in meetups %}
+      {% set member_count = meetup.members | length %}
+      {% set is_full = meetup.status.value == 'full' or member_count >= meetup.max_members %}
+      {% set already_joined = meetup.id in joined_ids %}
+
+      <div class="meetup-card bg-white rounded-3xl border border-brown/8 overflow-hidden reveal">
+
+        <!-- Cafe cover strip -->
+        <div class="h-28 relative overflow-hidden bg-cream-dark">
+          {% if meetup.cafe.cover_image_url %}
+          <img src="{{ meetup.cafe.cover_image_url }}" class="w-full h-full object-cover" />
+          {% else %}
+          <div class="w-full h-full flex items-center justify-center text-4xl opacity-15">☕</div>
+          {% endif %}
+          <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+          <!-- Status badge -->
+          <div class="absolute top-3 right-3">
+            {% if is_full %}
+            <span class="text-[10px] font-semibold bg-red-500 text-white px-2.5 py-1 rounded-full">已額滿</span>
+            {% else %}
+            <span class="text-[10px] font-semibold bg-matcha text-white px-2.5 py-1 rounded-full">招募中</span>
+            {% endif %}
+          </div>
+          <!-- Cafe name -->
+          <div class="absolute bottom-2.5 left-3">
+            <a href="/cafe/{{ meetup.cafe.slug }}" class="text-xs text-white/90 hover:text-white font-medium">
+              📍 {{ meetup.cafe.name }}
+            </a>
+          </div>
+        </div>
+
+        <div class="p-4">
+          <!-- Title -->
+          <a href="/meetups/{{ meetup.id }}" class="block">
+            <h3 class="font-semibold text-coffee text-base leading-snug mb-2 hover:text-brown transition-colors">{{ meetup.title }}</h3>
+          </a>
+
+          <!-- Tags -->
+          {% if meetup.purpose_tags %}
+          <div class="flex flex-wrap gap-1 mb-3">
+            {% for tag in meetup.purpose_tags.split(',') %}
+            {% if tag.strip() %}
+            <span class="text-[10px] bg-caramel/10 text-caramel px-2 py-0.5 rounded-full">{{ tag.strip() }}</span>
+            {% endif %}
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <!-- Time -->
+          <div class="flex items-center gap-1.5 text-xs text-coffee/50 mb-3">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            {{ meetup.scheduled_at.strftime('%m/%d %H:%M') }}
+          </div>
+
+          <!-- Description -->
+          {% if meetup.description %}
+          <p class="text-xs text-coffee/50 leading-relaxed mb-3 line-clamp-2">{{ meetup.description }}</p>
+          {% endif %}
+
+          <!-- Member progress -->
+          <div class="mb-4">
+            <div class="flex justify-between text-xs text-coffee/50 mb-1.5">
+              <span>目前人數</span>
+              <span class="font-semibold text-coffee">{{ member_count }} / {{ meetup.max_members }}</span>
+            </div>
+            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div class="progress-bar h-full rounded-full {% if is_full %}bg-red-400{% else %}bg-caramel{% endif %}"
+                   style="width: {{ [((member_count / meetup.max_members) * 100)|int, 100]|min }}%"></div>
+            </div>
+            <!-- Member avatars -->
+            <div class="flex items-center gap-1 mt-2">
+              {% for mem in meetup.members[:5] %}
+              <div class="w-6 h-6 rounded-full bg-caramel flex items-center justify-center text-cream text-[9px] font-bold border-2 border-white -ml-1 first:ml-0"
+                   title="{{ mem.user.display_name or mem.user.username }}">
+                {{ (mem.user.display_name or mem.user.username)[:1].upper() }}
+              </div>
+              {% endfor %}
+              {% if meetup.members | length > 5 %}
+              <span class="text-[10px] text-coffee/40 ml-1">+{{ meetup.members|length - 5 }}</span>
+              {% endif %}
+              <span class="text-[10px] text-coffee/40 ml-auto">
+                由 {{ meetup.organizer.display_name or meetup.organizer.username }} 發起
+              </span>
+            </div>
+          </div>
+
+          <!-- Action button -->
+          {% if already_joined %}
+          <a href="/meetups/{{ meetup.id }}"
+             class="block w-full text-center py-2.5 bg-matcha/10 text-matcha text-sm font-semibold rounded-2xl hover:bg-matcha/20 transition-colors">
+            ✓ 已加入 — 進入聊天室 →
+          </a>
+          {% elif is_full %}
+          <div class="w-full text-center py-2.5 bg-gray-100 text-coffee/40 text-sm font-semibold rounded-2xl">
+            已額滿
+          </div>
+          {% elif current_user %}
+          <form action="/api/meetups/{{ meetup.id }}/join" method="post">
+            <button class="w-full py-2.5 bg-brown text-cream text-sm font-semibold rounded-2xl hover:bg-brown-light transition-colors">
+              加入揪團
+            </button>
+          </form>
+          {% else %}
+          <a href="/login" class="block w-full text-center py-2.5 bg-brown/10 text-brown text-sm font-semibold rounded-2xl hover:bg-brown/20 transition-colors">
+            登入後加入
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="text-center py-20">
+      <div class="text-6xl mb-4 opacity-20">☕</div>
+      <h3 class="font-serif text-xl font-bold text-coffee mb-2">目前沒有揪團活動</h3>
+      <p class="text-coffee/50 text-sm mb-6">
+        {% if query or selected_cafe %}篩選條件下找不到揪團，試試放寬搜尋範圍{% else %}成為第一個發起揪團的人！{% endif %}
+      </p>
+      {% if current_user %}
+      <button onclick="document.getElementById('newMeetupModal').classList.remove('hidden')"
+              class="btn-primary text-sm">+ 發起第一個揪團</button>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- New Meetup Modal -->
+{% if current_user %}
+<div id="newMeetupModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h3 class="font-serif text-xl font-bold text-coffee">發起揪團</h3>
+      <button onclick="document.getElementById('newMeetupModal').classList.add('hidden')"
+              class="text-coffee/40 hover:text-coffee text-xl">✕</button>
+    </div>
+
+    <form action="/api/meetups" method="post" class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-coffee/50 mb-1.5 uppercase tracking-wide">揪團標題 *</label>
+        <input type="text" name="title" required placeholder="例：找人一起去喝抹茶聊天 🍵"
+               class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-coffee/50 mb-1.5 uppercase tracking-wide">地點（咖啡廳）*</label>
+        <select name="cafe_id" required
+                class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30">
+          <option value="">選擇咖啡廳</option>
+          {% for cafe in cafes %}
+          <option value="{{ cafe.id }}" {% if selected_cafe == cafe.id %}selected{% endif %}>{{ cafe.name }} — {{ cafe.district or '' }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-coffee/50 mb-1.5 uppercase tracking-wide">日期時間 *</label>
+          <input type="datetime-local" name="scheduled_at" required
+                 class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-coffee/50 mb-1.5 uppercase tracking-wide">人數上限</label>
+          <select name="max_members"
+                  class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30">
+            {% for n in [2,3,4,5,6,8,10] %}
+            <option value="{{ n }}" {% if n == 4 %}selected{% endif %}>{{ n }} 人</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-coffee/50 mb-1.5 uppercase tracking-wide">目的標籤（逗號分隔）</label>
+        <input type="text" name="purpose_tags" placeholder="例：拍照,抹茶控,聊天"
+               class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-coffee/50 mb-1.5 uppercase tracking-wide">揪團說明</label>
+        <textarea name="description" rows="3" placeholder="告訴大家這次揪團的目的、你是什麼樣的人..."
+                  class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm resize-none focus:outline-none focus:ring-2 focus:ring-caramel/30"></textarea>
+      </div>
+
+      <button type="submit" class="w-full bg-brown text-cream font-semibold py-3.5 rounded-xl hover:bg-brown-light transition-colors text-sm">
+        🎉 發起揪團
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

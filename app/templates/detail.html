@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+{% block title %}{{ cafe.name }} — CafeVibe{% endblock %}
+{% block meta_description %}{{ cafe.description[:120] if cafe.description else cafe.name ~ ('，位於' ~ (cafe.district or '') ~ '的質感咖啡廳。') }}{% endblock %}
+{% block og_type %}restaurant{% endblock %}
+{% block og_title %}{{ cafe.name }} — CafeVibe{% endblock %}
+{% block og_description %}{{ cafe.description[:120] if cafe.description else cafe.name ~ ('，位於' ~ (cafe.district or '') ~ '。') }}{% endblock %}
+{% block og_image %}{{ cafe.cover_image_url if cafe.cover_image_url else '/static/og-default.jpg' }}{% endblock %}
+{% block twitter_title %}{{ cafe.name }} — CafeVibe{% endblock %}
+{% block twitter_description %}{{ cafe.description[:100] if cafe.description else cafe.name ~ ('，位於' ~ (cafe.district or '') ~ '。') }}{% endblock %}
+{% block twitter_image %}{{ cafe.cover_image_url if cafe.cover_image_url else '/static/og-default.jpg' }}{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  .photo-carousel img { transition: opacity 0.4s ease; }
+  .score-bar { background: linear-gradient(to right, #C17F3E, #5C2D1E); border-radius: 99px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set _cover_photos = cafe.photos | selectattr('is_cover') | list %}
+{% set _carousel_count = (_cover_photos | length) if _cover_photos else (cafe.photos | length) %}
+<div class="pt-16 lg:pt-20" x-data="{
+  currentPhoto: 0,
+  totalPhotos: {{ _carousel_count or 1 }},
+  reserveOpen: false,
+  reviewOpen: false,
+  meetupOpen: false,
+  scores: { coffee: 0, dessert: 0, ambience: 0, focus: 0 },
+  favorited: {{ 'true' if is_favorited else 'false' }},
+  nextPhoto() { this.currentPhoto = (this.currentPhoto + 1) % this.totalPhotos },
+  prevPhoto() { this.currentPhoto = (this.currentPhoto - 1 + this.totalPhotos) % this.totalPhotos }
+}">
+
+  <!-- ===== PHOTO CAROUSEL ===== -->
+  <div class="relative bg-coffee overflow-hidden" style="height: clamp(260px, 50vh, 500px);">
+    {% set cover_photos = cafe.photos | selectattr('is_cover') | list %}
+    {% set all_photos = cover_photos if cover_photos else cafe.photos %}
+    {% if all_photos %}
+      {% for photo in all_photos %}
+      <img src="{{ photo.url }}" alt="{{ cafe.name }}"
+        class="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+        :class="currentPhoto === {{ loop.index0 }} ? 'opacity-100' : 'opacity-0'" />
+      {% endfor %}
+    {% elif cafe.cover_image_url %}
+      <img src="{{ cafe.cover_image_url }}" alt="{{ cafe.name }}" class="w-full h-full object-cover" />
+    {% else %}
+      <div class="w-full h-full bg-gradient-to-br from-brown to-coffee flex items-center justify-center">
+        <span class="text-8xl opacity-20">☕</span>
+      </div>
+    {% endif %}
+
+    <!-- Overlay gradient -->
+    <div class="absolute inset-0 bg-gradient-to-t from-coffee/60 via-transparent to-transparent"></div>
+
+    <!-- Carousel controls -->
+    {% if all_photos | length > 1 %}
+    <button @click="prevPhoto" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-cream/20 backdrop-blur-sm flex items-center justify-center hover:bg-cream/40 transition-colors text-cream">
+      ‹
+    </button>
+    <button @click="nextPhoto" class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-cream/20 backdrop-blur-sm flex items-center justify-center hover:bg-cream/40 transition-colors text-cream">
+      ›
+    </button>
+    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+      {% for photo in all_photos %}
+      <button @click="currentPhoto = {{ loop.index0 }}"
+        class="w-1.5 h-1.5 rounded-full transition-all"
+        :class="currentPhoto === {{ loop.index0 }} ? 'bg-cream w-4' : 'bg-cream/50'">
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Cafe name overlay -->
+    <div class="absolute bottom-0 left-0 right-0 p-6 lg:p-8">
+      <div class="max-w-7xl mx-auto">
+        <div class="flex flex-wrap gap-1.5 mb-2">
+          {% for tag in cafe.tags %}
+          <span class="tag-pill bg-cream/20 backdrop-blur-sm border border-cream/25 text-cream text-[11px]">{{ tag.name }}</span>
+          {% endfor %}
+        </div>
+        <h1 class="font-serif text-3xl md:text-4xl lg:text-5xl font-bold text-cream leading-tight">{{ cafe.name }}</h1>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===== MAIN LAYOUT ===== -->
+  <div class="max-w-7xl mx-auto px-6 lg:px-8 py-8 lg:py-12">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
+
+      <!-- ===== LEFT MAIN CONTENT (2/3) ===== -->
+      <div class="lg:col-span-2 space-y-10">
+
+        <!-- Basic Info -->
+        <section>
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <div class="flex items-center gap-3 mb-2">
+                <div class="flex items-center gap-1">
+                  <span class="star-rating text-lg">★</span>
+                  <span class="text-xl font-bold text-coffee">{{ "%.1f"|format(avg_scores.overall) if avg_scores.overall > 0 else '—' }}</span>
+                </div>
+                <span class="text-coffee/40 text-sm">{{ reviews | length }} 則評論</span>
+              </div>
+              <p class="text-coffee/70 leading-relaxed">{{ cafe.description or '' }}</p>
+            </div>
+            <!-- Favorite button -->
+            <button type="button" class="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl border transition-all text-sm font-medium"
+              :class="favorited ? 'bg-red-50 border-red-200 text-red-500' : 'bg-white border-brown/15 text-coffee/60 hover:border-caramel hover:text-caramel'"
+              @click="
+                fetch('/api/favorites/toggle', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: 'cafe_id={{ cafe.id }}'
+                })
+                .then(r => r.json())
+                .then(d => { favorited = d.favorited })
+              ">
+              <span x-text="favorited ? '♥' : '♡'" class="text-base"></span>
+              <span x-text="favorited ? '已收藏' : '收藏'"></span>
+            </button>
+          </div>
+
+          <!-- Info grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="flex items-start gap-3 bg-white rounded-xl p-4 border border-brown/8">
+              <span class="text-lg mt-0.5">📍</span>
+              <div>
+                <p class="text-xs text-coffee/50 font-medium mb-0.5">地址</p>
+                <p class="text-sm text-coffee">{{ cafe.address }}</p>
+              </div>
+            </div>
+            {% if cafe.opening_hours %}
+            <div class="flex items-start gap-3 bg-white rounded-xl p-4 border border-brown/8">
+              <span class="text-lg mt-0.5">🕐</span>
+              <div>
+                <p class="text-xs text-coffee/50 font-medium mb-0.5">營業時間</p>
+                <p class="text-sm text-coffee">{{ cafe.opening_hours }}</p>
+              </div>
+            </div>
+            {% endif %}
+            {% if cafe.phone %}
+            <div class="flex items-start gap-3 bg-white rounded-xl p-4 border border-brown/8">
+              <span class="text-lg mt-0.5">📞</span>
+              <div>
+                <p class="text-xs text-coffee/50 font-medium mb-0.5">電話</p>
+                <p class="text-sm text-coffee">{{ cafe.phone }}</p>
+              </div>
+            </div>
+            {% endif %}
+            {% if cafe.instagram_url %}
+            <div class="flex items-start gap-3 bg-white rounded-xl p-4 border border-brown/8">
+              <span class="text-lg mt-0.5">📸</span>
+              <div>
+                <p class="text-xs text-coffee/50 font-medium mb-0.5">Instagram</p>
+                <a href="{{ cafe.instagram_url }}" target="_blank" class="text-sm text-caramel hover:text-brown transition-colors">查看 IG 頁面 ↗</a>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </section>
+
+
+        <!-- Multi-dim Radar Score -->
+        <section>
+          <h2 class="font-serif text-xl font-bold text-coffee mb-5">⭐ 多維度評分</h2>
+          {% if reviews %}
+          <div class="bg-white rounded-2xl p-6 border border-brown/8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <!-- Radar chart -->
+              <div class="relative" style="max-height: 240px;">
+                <canvas id="radarChart"></canvas>
+              </div>
+              <!-- Score bars -->
+              <div class="space-y-4">
+                {% for dim, label, icon in [
+                  ('coffee',   '咖啡風味', '☕'),
+                  ('dessert',  '甜點美味', '🍰'),
+                  ('ambience', '環境氣氛', '✨'),
+                  ('focus',    '專注程度', '📚'),
+                ] %}
+                <div>
+                  <div class="flex justify-between mb-1.5">
+                    <span class="text-sm font-medium text-coffee">{{ icon }} {{ label }}</span>
+                    <span class="text-sm font-bold text-brown">{{ "%.1f"|format(avg_scores[dim]) }}</span>
+                  </div>
+                  <div class="h-2 bg-cream-dark rounded-full overflow-hidden">
+                    <div class="h-full score-bar" style="width: {{ (avg_scores[dim] / 5 * 100)|int }}%"></div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div class="bg-cream-dark rounded-2xl p-8 text-center border border-brown/8">
+            <p class="text-coffee/50 text-sm">還沒有評分，成為第一個留下評分的人吧！</p>
+          </div>
+          {% endif %}
+        </section>
+
+
+        <!-- Photo Wall -->
+        {% set all_photos = cafe.photos %}
+        {% if all_photos | length > 1 %}
+        <section>
+          <h2 class="font-serif text-xl font-bold text-coffee mb-4">📷 店內照片</h2>
+          <div class="grid grid-cols-3 gap-2">
+            {% for photo in all_photos %}
+            <a href="{{ photo.url }}" target="_blank"
+               class="block rounded-xl overflow-hidden bg-cream-dark group"
+               style="aspect-ratio:1/1;">
+              <img src="{{ photo.url }}" alt="{{ cafe.name }}"
+                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            </a>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+
+
+        <!-- Reviews -->
+        <section id="reviews">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="font-serif text-xl font-bold text-coffee">💬 網友評論 ({{ reviews | length }})</h2>
+            {% if current_user %}
+            <button @click="reviewOpen = true" class="btn-outline text-sm">+ 寫評論</button>
+            {% else %}
+            <a href="/login" class="btn-outline text-sm">登入後留言</a>
+            {% endif %}
+          </div>
+
+          {% if reviews %}
+          <div class="space-y-4">
+            {% for review in reviews %}
+            <div class="bg-white rounded-2xl p-5 border border-brown/8">
+              <div class="flex items-start gap-3 mb-3">
+                <div class="w-9 h-9 rounded-full bg-caramel flex items-center justify-center text-cream text-sm font-bold flex-shrink-0">
+                  {{ (review.user.display_name or review.user.username)[:1].upper() }}
+                </div>
+                <div class="flex-1">
+                  <div class="flex items-center justify-between">
+                    <p class="font-semibold text-coffee text-sm">{{ review.user.display_name or review.user.username }}</p>
+                    <p class="text-xs text-coffee/40">{{ review.created_at.strftime('%Y/%m/%d') }}</p>
+                  </div>
+                  <div class="flex items-center gap-1 mt-0.5">
+                    <span class="star-rating text-xs">★</span>
+                    <span class="text-xs font-semibold text-coffee">{{ "%.1f"|format(review.overall_score) }}</span>
+                    <span class="text-coffee/30 text-xs mx-1">·</span>
+                    {% for dim, label in [('coffee','咖啡'), ('dessert','甜點'), ('ambience','氣氛'), ('focus','專注')] %}
+                    <span class="text-[10px] text-coffee/50">{{ label }} {{ review.score_dict.get(dim, 0)|int }}</span>
+                    {% if not loop.last %}<span class="text-coffee/20 text-[10px]">/</span>{% endif %}
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+              {% if review.content %}
+              <p class="text-coffee/80 text-sm leading-relaxed">{{ review.content }}</p>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="bg-cream-dark rounded-2xl p-10 text-center border border-brown/8">
+            <p class="text-4xl mb-3 opacity-30">💬</p>
+            <p class="text-coffee/50 text-sm">還沒有評論，分享你的第一手體驗吧！</p>
+          </div>
+          {% endif %}
+        </section>
+
+
+        <!-- Meetups -->
+        <section id="meetups">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="font-serif text-xl font-bold text-coffee">👥 尋找咖友揪團</h2>
+            {% if current_user %}
+            <button @click="meetupOpen = true" class="btn-primary text-sm !py-2.5 !px-5">發起揪團</button>
+            {% else %}
+            <a href="/login" class="btn-primary text-sm !py-2.5 !px-5">登入後發起</a>
+            {% endif %}
+          </div>
+
+          {% if active_meetups %}
+          <div class="space-y-3">
+            {% for meetup in active_meetups %}
+            <div class="bg-white rounded-2xl p-5 border border-brown/8 hover:border-caramel/30 transition-colors">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-3 flex-1">
+                  <div class="w-9 h-9 rounded-full bg-brown flex items-center justify-center text-cream text-sm font-bold flex-shrink-0">
+                    {{ (meetup.organizer.display_name or meetup.organizer.username)[:1].upper() }}
+                  </div>
+                  <div>
+                    <h4 class="font-semibold text-coffee text-sm">{{ meetup.title }}</h4>
+                    <p class="text-xs text-coffee/50 mt-0.5">
+                      發起：{{ meetup.organizer.display_name or meetup.organizer.username }} ·
+                      {{ meetup.scheduled_at.strftime('%m/%d %H:%M') }}
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  <span class="tag-pill bg-matcha/15 text-matcha text-[11px]">{{ meetup.current_count }}/{{ meetup.max_members }} 人</span>
+                  {% if current_user and meetup.is_joinable %}
+                  <form action="/api/meetups/{{ meetup.id }}/join" method="post">
+                    <button type="submit" class="btn-primary text-xs !py-2 !px-4">報名</button>
+                  </form>
+                  {% endif %}
+                </div>
+              </div>
+              {% if meetup.description %}
+              <p class="text-coffee/60 text-sm mt-3 ml-12">{{ meetup.description }}</p>
+              {% endif %}
+              {% if meetup.purpose_tags %}
+              <div class="flex flex-wrap gap-1.5 mt-3 ml-12">
+                {% for tag in meetup.purpose_tags.split(',') %}
+                <span class="tag-pill bg-caramel/10 text-caramel text-[10px]">{{ tag.strip() }}</span>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="bg-cream-dark rounded-2xl p-10 text-center border border-brown/8">
+            <p class="text-4xl mb-3 opacity-30">👥</p>
+            <p class="text-coffee/50 text-sm">目前沒有揪團活動，成為第一個發起的人！</p>
+          </div>
+          {% endif %}
+        </section>
+
+      </div><!-- end left -->
+
+
+      <!-- ===== RIGHT SIDEBAR (1/3) ===== -->
+      <aside class="space-y-5">
+
+        <!-- Reservation card (sticky) -->
+        <div class="bg-white rounded-2xl p-6 border border-brown/8 shadow-sm sticky top-28">
+          <h3 class="font-serif text-lg font-bold text-coffee mb-4">線上預約座位</h3>
+
+          {% if current_user %}
+          <form action="/api/reservations" method="post" class="space-y-4">
+            <input type="hidden" name="cafe_id" value="{{ cafe.id }}" />
+
+            <div>
+              <label class="block text-xs font-semibold text-coffee/60 uppercase tracking-wide mb-1.5">選擇日期</label>
+              <input type="date" name="res_date" required id="res-date-input"
+                class="w-full px-3 py-2.5 rounded-xl border border-brown/15 bg-cream text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30 focus:border-caramel" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-coffee/60 uppercase tracking-wide mb-1.5">選擇時段</label>
+              <select name="time_slot" required class="w-full px-3 py-2.5 rounded-xl border border-brown/15 bg-cream text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30">
+                <option value="">請選擇時段</option>
+                {% for slot in ['10:00-11:30','11:30-13:00','13:00-14:30','14:30-16:00','16:00-17:30','17:30-19:00','19:00-20:30'] %}
+                <option value="{{ slot }}">{{ slot }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-coffee/60 uppercase tracking-wide mb-1.5">人數</label>
+              <select name="guests" class="w-full px-3 py-2.5 rounded-xl border border-brown/15 bg-cream text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30">
+                {% for i in range(1, 9) %}<option value="{{ i }}">{{ i }} 人</option>{% endfor %}
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-coffee/60 uppercase tracking-wide mb-1.5">特殊需求（選填）</label>
+              <textarea name="notes" rows="2" placeholder="靠窗座位、電源需求..."
+                class="w-full px-3 py-2.5 rounded-xl border border-brown/15 bg-cream text-coffee text-sm resize-none focus:outline-none focus:ring-2 focus:ring-caramel/30 placeholder-coffee/30"></textarea>
+            </div>
+
+            <button type="submit" class="btn-primary w-full text-center py-3.5 text-sm">確認預約</button>
+          </form>
+          {% else %}
+          <div class="text-center py-4">
+            <p class="text-coffee/50 text-sm mb-4">登入後即可預約座位</p>
+            <a href="/login" class="btn-primary w-full text-center block py-3.5 text-sm">登入後預約</a>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Quick score summary -->
+        {% if avg_scores.overall > 0 %}
+        <div class="bg-coffee rounded-2xl p-5 text-cream">
+          <p class="text-xs text-cream/50 uppercase tracking-wider mb-3">綜合評分</p>
+          <div class="flex items-baseline gap-2 mb-4">
+            <span class="font-serif text-4xl font-bold text-caramel">{{ "%.1f"|format(avg_scores.overall) }}</span>
+            <span class="text-cream/50 text-sm">/ 5.0</span>
+          </div>
+          {% for dim, label in [('coffee','咖啡'),('dessert','甜點'),('ambience','氣氛'),('focus','專注')] %}
+          <div class="flex justify-between items-center mb-1.5">
+            <span class="text-xs text-cream/60">{{ label }}</span>
+            <span class="text-xs font-semibold text-cream">{{ "%.1f"|format(avg_scores[dim]) }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+      </aside><!-- end right -->
+
+    </div>
+  </div>
+
+
+  <!-- ===== WRITE REVIEW MODAL ===== -->
+  <div x-show="reviewOpen" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-coffee/60 backdrop-blur-sm">
+    <div @click.outside="reviewOpen = false" class="bg-cream rounded-3xl shadow-2xl w-full max-w-lg p-8">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="font-serif text-xl font-bold text-coffee">寫下你的評論</h3>
+        <button @click="reviewOpen = false" class="text-coffee/40 hover:text-coffee text-xl">✕</button>
+      </div>
+      <form action="/api/reviews" method="post" class="space-y-5">
+        <input type="hidden" name="cafe_id" value="{{ cafe.id }}" />
+
+        {% for dim, label, icon in [
+          ('coffee',   '咖啡風味', '☕'),
+          ('dessert',  '甜點美味', '🍰'),
+          ('ambience', '環境氣氛', '✨'),
+          ('focus',    '專注程度', '📚'),
+        ] %}
+        <div>
+          <label class="block text-xs font-semibold text-coffee/60 uppercase tracking-wide mb-2">{{ icon }} {{ label }}</label>
+          <input type="hidden" name="score_{{ dim }}" :value="scores.{{ dim }}" />
+          <div class="flex gap-2">
+            {% for v in [1,2,3,4,5] %}
+            <button type="button" @click="scores.{{ dim }} = {{ v }}"
+              class="flex-1 py-2 rounded-xl border text-sm font-bold transition-all cursor-pointer"
+              :class="scores.{{ dim }} >= {{ v }} ? 'bg-caramel/20 border-caramel text-caramel' : 'border-brown/15 text-coffee/40 hover:bg-caramel/10 hover:border-caramel hover:text-caramel'">{{ v }}</button>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+
+        <div>
+          <label class="block text-xs font-semibold text-coffee/60 uppercase tracking-wide mb-2">評論內容（選填）</label>
+          <textarea name="content" rows="3" placeholder="分享你的造訪體驗..."
+            class="w-full px-4 py-3 rounded-xl border border-brown/15 bg-white text-coffee text-sm resize-none focus:outline-none focus:ring-2 focus:ring-caramel/30 placeholder-coffee/30"></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary w-full text-center py-3.5 text-sm">送出評論</button>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ===== CREATE MEETUP MODAL ===== -->
+  <div x-show="meetupOpen" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-coffee/60 backdrop-blur-sm">
+    <div @click.outside="meetupOpen = false" class="bg-cream rounded-3xl shadow-2xl w-full max-w-lg p-8 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="font-serif text-xl font-bold text-coffee">發起咖友揪團</h3>
+        <button @click="meetupOpen = false" class="text-coffee/40 hover:text-coffee text-xl">✕</button>
+      </div>
+      <form action="/api/meetups" method="post" class="space-y-4">
+        <input type="hidden" name="cafe_id" value="{{ cafe.id }}" />
+
+        <div>
+          <label class="block text-xs font-semibold text-coffee/60 uppercase tracking-wide mb-1.5">揪團標題</label>
+          <input type="text" name="title" required placeholder="例：找人一起討論 AI 論文 🤖"
+            class="w-full px-4 py-3 rounded-xl border border-brown/15 bg-white text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30 placeholder-coffee/30" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-coffee/60 uppercase tracking-wide mb-1.5">目的標籤（逗號分隔）</label>
+          <input type="text" name="purpose_tags" placeholder="拍照互助, K-pop, AI論文, 讀書"
+            class="w-full px-4 py-3 rounded-xl border border-brown/15 bg-white text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30 placeholder-coffee/30" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-coffee/60 uppercase tracking-wide mb-1.5">預定時間</label>
+            <input type="datetime-local" name="scheduled_at" required
+              class="w-full px-3 py-2.5 rounded-xl border border-brown/15 bg-white text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-coffee/60 uppercase tracking-wide mb-1.5">招募人數</label>
+            <select name="max_members" class="w-full px-3 py-2.5 rounded-xl border border-brown/15 bg-white text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30">
+              {% for i in range(2,9) %}<option value="{{ i }}" {% if i==4 %}selected{% endif %}>{{ i }} 人</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-coffee/60 uppercase tracking-wide mb-1.5">揪團說明（選填）</label>
+          <textarea name="description" rows="2" placeholder="說明你的揪團目的..."
+            class="w-full px-4 py-3 rounded-xl border border-brown/15 bg-white text-coffee text-sm resize-none focus:outline-none focus:ring-2 focus:ring-caramel/30 placeholder-coffee/30"></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary w-full text-center py-3.5 text-sm">發起揪團</button>
+      </form>
+    </div>
+  </div>
+
+</div><!-- end x-data -->
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+  // Set today as min date for reservation
+  const dateInput = document.getElementById('res-date-input');
+  if (dateInput) dateInput.min = new Date().toISOString().split('T')[0];
+
+  // Radar Chart
+  {% if reviews %}
+  const ctx = document.getElementById('radarChart');
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: ['咖啡風味', '甜點美味', '環境氣氛', '專注程度'],
+        datasets: [{
+          data: [
+            {{ "%.1f"|format(avg_scores.coffee) }},
+            {{ "%.1f"|format(avg_scores.dessert) }},
+            {{ "%.1f"|format(avg_scores.ambience) }},
+            {{ "%.1f"|format(avg_scores.focus) }},
+          ],
+          backgroundColor: 'rgba(193,127,62,0.15)',
+          borderColor: '#C17F3E',
+          borderWidth: 2,
+          pointBackgroundColor: '#5C2D1E',
+          pointBorderColor: '#FAF6F1',
+          pointBorderWidth: 2,
+          pointRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+          r: {
+            min: 0, max: 5,
+            ticks: { stepSize: 1, display: false },
+            grid: { color: 'rgba(44,24,16,0.08)' },
+            pointLabels: { font: { size: 11, family: 'Plus Jakarta Sans' }, color: '#2C1810' },
+          }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+  {% endif %}
+</script>
+{% endblock %}

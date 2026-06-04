@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}CafeVibe — 質感跑咖探索{% endblock %}</title>
+
+  <!-- SEO & Social -->
+  <meta name="description" content="{% block meta_description %}探索台灣最有質感的咖啡廳，篩選風格、預約座位、揪團交友，打造你的跑咖日記。{% endblock %}" />
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}" />
+  <meta property="og:title" content="{% block og_title %}CafeVibe — 質感跑咖探索{% endblock %}" />
+  <meta property="og:description" content="{% block og_description %}探索台灣最有質感的咖啡廳，篩選風格、預約座位、揪團交友，打造你的跑咖日記。{% endblock %}" />
+  <meta property="og:image" content="{% block og_image %}/static/og-default.jpg{% endblock %}" />
+  <meta property="og:url" content="{% block og_url %}{% endblock %}" />
+  <meta property="og:site_name" content="CafeVibe" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="{% block twitter_title %}CafeVibe — 質感跑咖探索{% endblock %}" />
+  <meta name="twitter:description" content="{% block twitter_description %}探索台灣最有質感的咖啡廳，篩選風格、預約座位、揪團交友。{% endblock %}" />
+  <meta name="twitter:image" content="{% block twitter_image %}/static/og-default.jpg{% endblock %}" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream:    { DEFAULT: '#FAF6F1', dark: '#F0E8DE' },
+            brown:    { DEFAULT: '#5C2D1E', light: '#7B3B2B', dark: '#3D1A0F' },
+            caramel:  { DEFAULT: '#C17F3E', light: '#D4975A', dark: '#9B6228' },
+            matcha:   { DEFAULT: '#3D6B4F', light: '#4E8565', dark: '#2A4D38' },
+            coffee:   { DEFAULT: '#2C1810', muted: '#6B4C3B' },
+          },
+          fontFamily: {
+            serif:  ['"Playfair Display"', 'Georgia', 'serif'],
+            sans:   ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <!-- GSAP -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
+  {% block extra_head %}{% endblock %}
+
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #FAF6F1; color: #2C1810; }
+    .font-serif { font-family: 'Playfair Display', serif; }
+
+    /* Smooth scroll */
+    html { scroll-behavior: smooth; }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #FAF6F1; }
+    ::-webkit-scrollbar-thumb { background: #C17F3E; border-radius: 3px; }
+
+    /* Navbar transition */
+    #navbar { transition: background 0.4s ease, box-shadow 0.4s ease; }
+    #navbar.scrolled { background: rgba(250,246,241,0.97) !important; box-shadow: 0 1px 20px rgba(44,24,16,0.08); }
+
+    /* Card hover lift */
+    .card-lift { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .card-lift:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(44,24,16,0.12); }
+
+    /* Tag pill */
+    .tag-pill { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; white-space: nowrap; }
+
+    /* Btn primary */
+    .btn-primary { background: #5C2D1E; color: #FAF6F1; padding: 12px 28px; border-radius: 9999px; font-weight: 600; font-size: 0.875rem; letter-spacing: 0.02em; transition: background 0.2s, transform 0.2s; cursor: pointer; display: inline-block; border: none; }
+    .btn-primary:hover { background: #3D1A0F; transform: translateY(-1px); }
+
+    /* Btn outline */
+    .btn-outline { border: 1.5px solid #5C2D1E; color: #5C2D1E; padding: 10px 24px; border-radius: 9999px; font-weight: 600; font-size: 0.875rem; transition: all 0.2s; cursor: pointer; display: inline-block; background: transparent; }
+    .btn-outline:hover { background: #5C2D1E; color: #FAF6F1; }
+
+    /* Star rating */
+    .star-rating { color: #C17F3E; }
+
+    /* Gradient overlays */
+    .hero-gradient { background: linear-gradient(135deg, rgba(44,24,16,0.7) 0%, rgba(92,45,30,0.4) 50%, rgba(193,127,62,0.2) 100%); }
+    .card-gradient { background: linear-gradient(to top, rgba(44,24,16,0.85) 0%, rgba(44,24,16,0.2) 60%, transparent 100%); }
+
+    /* Reveal animation classes */
+    .reveal { opacity: 0; transform: translateY(30px); }
+    .reveal.visible { opacity: 1; transform: translateY(0); transition: opacity 0.7s ease, transform 0.7s ease; }
+
+    /* Section divider */
+    .section-divider { width: 48px; height: 3px; background: #C17F3E; border-radius: 2px; margin: 16px 0; }
+  </style>
+</head>
+
+<body class="bg-cream antialiased">
+
+  <!-- ===== NAVBAR ===== -->
+  <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 bg-transparent" x-data="{ open: false }">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 lg:h-20">
+
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-2 group">
+          <div class="w-8 h-8 rounded-full bg-brown flex items-center justify-center">
+            <span class="text-cream text-sm font-serif font-bold">C</span>
+          </div>
+          <span class="font-serif text-xl font-bold text-coffee group-hover:text-brown transition-colors">CafeVibe</span>
+        </a>
+
+        <!-- Desktop Nav -->
+        <div class="hidden md:flex items-center gap-8">
+          <a href="/" class="text-sm font-medium text-coffee hover:text-brown transition-colors">首頁</a>
+          <a href="/explore" class="text-sm font-medium text-coffee hover:text-brown transition-colors">探索咖啡廳</a>
+          <a href="/meetups" class="text-sm font-medium text-coffee hover:text-brown transition-colors">揪團布告欄</a>
+          <a href="/explore?sort=rating" class="text-sm font-medium text-coffee hover:text-brown transition-colors">精選推薦</a>
+        </div>
+
+        <!-- Auth buttons -->
+        <div class="hidden md:flex items-center gap-3">
+          {% if current_user %}
+            <a href="/profile" class="flex items-center gap-2 group">
+              <div class="w-8 h-8 rounded-full bg-caramel flex items-center justify-center text-cream text-sm font-semibold">
+                {{ (current_user.display_name or current_user.username)[:1].upper() }}
+              </div>
+              <span class="text-sm font-medium text-coffee group-hover:text-brown transition-colors">
+                {{ current_user.display_name or current_user.username }}
+              </span>
+            </a>
+            {% if current_user.role == 'admin' %}
+              <a href="/admin" class="text-xs font-semibold text-matcha hover:text-matcha-dark border border-matcha px-3 py-1.5 rounded-full transition-colors">管理後台</a>
+            {% elif current_user.role == 'owner' %}
+              <a href="/owner" class="text-xs font-semibold text-caramel hover:text-caramel-dark border border-caramel/60 px-3 py-1.5 rounded-full transition-colors">店家後台</a>
+            {% endif %}
+            <a href="/logout" class="btn-outline text-xs !py-2 !px-4">登出</a>
+          {% else %}
+            <a href="/login" class="text-sm font-medium text-coffee hover:text-brown transition-colors">登入</a>
+            <a href="/register" class="btn-primary text-xs !py-2.5 !px-5">立即註冊</a>
+          {% endif %}
+        </div>
+
+        <!-- Mobile hamburger -->
+        <button @click="open = !open" class="md:hidden p-2 rounded-lg hover:bg-cream-dark transition-colors">
+          <svg class="w-5 h-5 text-coffee" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path x-show="!open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+            <path x-show="open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Mobile menu -->
+      <div x-show="open" x-transition class="md:hidden pb-4 border-t border-brown/10 mt-2">
+        <div class="flex flex-col gap-3 pt-4">
+          <a href="/" class="text-sm font-medium text-coffee hover:text-brown px-2 py-1.5">首頁</a>
+          <a href="/explore" class="text-sm font-medium text-coffee hover:text-brown px-2 py-1.5">探索咖啡廳</a>
+            <a href="/meetups" class="text-sm font-medium text-coffee hover:text-brown px-2 py-1.5">揪團布告欄</a>
+          {% if current_user %}
+            <a href="/profile" class="text-sm font-medium text-coffee hover:text-brown px-2 py-1.5">我的帳號</a>
+            {% if current_user.role == 'admin' %}
+              <a href="/admin" class="text-sm font-medium text-matcha hover:text-matcha-dark px-2 py-1.5">管理後台</a>
+            {% elif current_user.role == 'owner' %}
+              <a href="/owner" class="text-sm font-medium text-caramel px-2 py-1.5">店家後台</a>
+            {% endif %}
+            <a href="/logout" class="btn-outline text-center text-sm mt-2">登出</a>
+          {% else %}
+            <a href="/login" class="btn-outline text-center text-sm mt-2">登入</a>
+            <a href="/register" class="btn-primary text-center text-sm mt-2">立即註冊</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="bg-coffee text-cream/80 mt-24">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8 py-16">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-10">
+        <div class="md:col-span-2">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-8 h-8 rounded-full bg-caramel flex items-center justify-center">
+              <span class="text-cream text-sm font-serif font-bold">C</span>
+            </div>
+            <span class="font-serif text-2xl font-bold text-cream">CafeVibe</span>
+          </div>
+          <p class="text-sm leading-relaxed text-cream/60 max-w-xs">
+            探索每一間值得被記住的咖啡廳。<br/>
+            找到屬於你的角落，遇見同好的人。
+          </p>
+          <div class="flex gap-4 mt-6">
+            <a href="#" class="w-9 h-9 rounded-full border border-cream/20 flex items-center justify-center hover:border-caramel hover:text-caramel transition-colors text-sm">IG</a>
+            <a href="#" class="w-9 h-9 rounded-full border border-cream/20 flex items-center justify-center hover:border-caramel hover:text-caramel transition-colors text-sm">FB</a>
+          </div>
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-cream mb-4 uppercase tracking-wider">探索</h4>
+          <ul class="space-y-2.5 text-sm">
+            <li><a href="/explore" class="hover:text-caramel transition-colors">所有咖啡廳</a></li>
+            <li><a href="/explore?tags=not-time-limited" class="hover:text-caramel transition-colors">不限時咖啡廳</a></li>
+            <li><a href="/explore?tags=late-night" class="hover:text-caramel transition-colors">深夜咖啡廳</a></li>
+            <li><a href="/explore?sort=rating" class="hover:text-caramel transition-colors">精選推薦</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-cream mb-4 uppercase tracking-wider">社群</h4>
+          <ul class="space-y-2.5 text-sm">
+            <li><a href="/register" class="hover:text-caramel transition-colors">加入 CafeVibe</a></li>
+            <li><a href="/profile" class="hover:text-caramel transition-colors">我的口袋名單</a></li>
+            <li><a href="/explore" class="hover:text-caramel transition-colors">揪咖友</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-sm font-semibold text-cream mb-4 uppercase tracking-wider">平台合作</h4>
+          <p class="text-xs text-cream/50 leading-relaxed mb-3">店家上架或申請店長帳號，請來信與我們聯繫，2–3 個工作天內回覆。</p>
+          <a href="mailto:xxxxxroger@gmail.com" class="text-sm text-caramel hover:text-cream transition-colors break-all">xxxxxroger@gmail.com</a>
+        </div>
+      </div>
+      <div class="border-t border-cream/10 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="text-xs text-cream/40">© 2026 CafeVibe. All rights reserved.</p>
+        <p class="text-xs text-cream/40">Made with ☕ in Taichung </p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== GLOBAL JS ===== -->
+  <script>
+    // Navbar scroll effect
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+      navbar.classList.toggle('scrolled', window.scrollY > 40);
+    });
+
+    // GSAP scroll reveal
+    gsap.registerPlugin(ScrollTrigger);
+    document.querySelectorAll('.reveal').forEach(el => {
+      gsap.to(el, {
+        opacity: 1, y: 0, duration: 0.8, ease: 'power2.out',
+        scrollTrigger: { trigger: el, start: 'top 88%' }
+      });
+    });
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

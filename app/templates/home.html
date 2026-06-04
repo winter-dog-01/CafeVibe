@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+
+{% block title %}CafeVibe — 探索每一間值得被記住的咖啡廳{% endblock %}
+{% block og_title %}CafeVibe — 探索每一間值得被記住的咖啡廳{% endblock %}
+{% block og_description %}台灣最質感的咖啡廳探索平台。依風格、地區、氣氛篩選，輕鬆找到下一間心頭好，還能預約座位、揪團交友。{% endblock %}
+{% block twitter_title %}CafeVibe — 探索每一間值得被記住的咖啡廳{% endblock %}
+{% block twitter_description %}台灣最質感的咖啡廳探索平台。依風格、地區、氣氛篩選，輕鬆找到下一間心頭好。{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Hero section */
+  .hero-section {
+    height: 100vh;
+    min-height: 600px;
+    background-image: url('https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1800&q=80');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    position: relative;
+  }
+
+  /* Horizontal scroll carousel */
+  .scroll-carousel {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+  }
+  .scroll-carousel::-webkit-scrollbar { display: none; }
+  .scroll-carousel > * { scroll-snap-align: start; }
+
+  /* Cafe card */
+  .cafe-card { min-width: 280px; max-width: 280px; }
+
+  /* Story section */
+  .story-img { aspect-ratio: 4/3; object-fit: cover; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ===== HERO ===== -->
+<section class="hero-section">
+  <div class="hero-gradient absolute inset-0"></div>
+  <!-- Decorative grain overlay -->
+  <div class="absolute inset-0 opacity-30" style="background-image:url('data:image/svg+xml,%3Csvg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\' opacity=\'0.15\'/%3E%3C/svg%3E');background-size:200px;"></div>
+
+  <div class="relative z-10 flex flex-col items-center justify-center h-full text-center px-6">
+    <!-- Eyebrow -->
+    <div id="hero-eyebrow" class="inline-flex items-center gap-2 bg-caramel/20 backdrop-blur-sm border border-caramel/30 text-caramel px-4 py-1.5 rounded-full text-xs font-semibold tracking-widest uppercase mb-6">
+      ✦ 全台最質感咖啡廳探索平台
+    </div>
+
+    <!-- Main headline -->
+    <h1 id="hero-title" class="font-serif text-5xl md:text-7xl lg:text-8xl font-bold text-cream leading-[1.1] mb-6 max-w-4xl">
+      探索每一間<br/>
+      <em class="text-caramel not-italic">值得被記住</em><br/>
+      的咖啡廳
+    </h1>
+
+    <!-- Sub -->
+    <p id="hero-sub" class="text-cream/70 text-lg md:text-xl mb-10 max-w-lg">
+      Discover · Reserve · Connect
+    </p>
+
+    <!-- Search bar -->
+    <div id="hero-search" class="w-full max-w-2xl">
+      <form action="/explore" method="get" class="flex gap-0 bg-cream/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden">
+        <div class="flex-1 flex items-center gap-3 px-5">
+          <svg class="w-5 h-5 text-coffee/40 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="text" name="q" placeholder="搜尋店名、風格、甜點關鍵字..." class="flex-1 py-4 bg-transparent text-coffee text-sm font-medium outline-none placeholder-coffee/40" />
+        </div>
+        <button type="submit" class="btn-primary !rounded-none !rounded-r-2xl px-8 m-1.5 text-sm">
+          搜尋
+        </button>
+      </form>
+    </div>
+
+    <!-- Quick tags -->
+    <div id="hero-tags" class="flex flex-wrap justify-center gap-2 mt-6">
+      {% set quick_tags = [('不限時', 'not-time-limited'), ('插座充足', 'many-outlets'), ('韓系風格', 'korean-style'), ('極致抹茶', 'matcha'), ('深夜營業', 'late-night')] %}
+      {% for label, slug in quick_tags %}
+        <a href="/explore?tags={{ slug }}" class="tag-pill bg-cream/15 backdrop-blur-sm border border-cream/25 text-cream hover:bg-caramel hover:border-caramel hover:text-coffee transition-all">
+          {{ label }}
+        </a>
+      {% endfor %}
+    </div>
+
+    <!-- Scroll indicator -->
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-cream/40">
+      <span class="text-xs tracking-widest uppercase">Scroll</span>
+      <div class="w-px h-10 bg-gradient-to-b from-cream/40 to-transparent animate-pulse"></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== HOT RECOMMENDATIONS ===== -->
+<section class="pt-20 pb-4 px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex items-end justify-between mb-8 reveal">
+      <div>
+        <p class="text-caramel text-xs font-semibold tracking-widest uppercase mb-2">精選推薦</p>
+        <h2 class="font-serif text-3xl md:text-4xl font-bold text-coffee">本週 Hot Picks</h2>
+        <div class="section-divider"></div>
+      </div>
+      <a href="/explore?sort=rating" class="btn-outline text-sm hidden md:inline-block">查看全部 →</a>
+    </div>
+
+    <!-- Horizontal scroll -->
+    <div class="scroll-carousel flex gap-5 pb-4 -mx-6 px-6">
+      {% if featured_cafes %}
+        {% for cafe in featured_cafes %}
+        <a href="/cafe/{{ cafe.slug }}" class="cafe-card card-lift rounded-2xl overflow-hidden bg-white shadow-sm group block flex-shrink-0">
+          <div class="relative h-44 overflow-hidden">
+            {% if cafe.photos %}
+              <img src="{{ cafe.photos[0].url }}" alt="{{ cafe.name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            {% elif cafe.cover_image_url %}
+              <img src="{{ cafe.cover_image_url }}" alt="{{ cafe.name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            {% else %}
+              <div class="w-full h-full bg-gradient-to-br from-cream-dark to-caramel/30 flex items-center justify-center">
+                <span class="text-4xl">☕</span>
+              </div>
+            {% endif %}
+            <div class="card-gradient absolute inset-0"></div>
+            <!-- Tags overlay -->
+            <div class="absolute bottom-3 left-3 flex flex-wrap gap-1">
+              {% for tag in cafe.tags[:2] %}
+              <span class="tag-pill bg-coffee/70 text-cream text-[10px]">{{ tag.name }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="p-4">
+            <h3 class="font-serif font-semibold text-coffee text-base mb-1 group-hover:text-brown transition-colors line-clamp-1">{{ cafe.name }}</h3>
+            <p class="text-coffee/60 text-xs mb-3 line-clamp-1">{{ cafe.district or cafe.city }}</p>
+            <div class="flex items-center gap-1">
+              <span class="star-rating text-sm">★</span>
+              <span class="text-sm font-semibold text-coffee">{{ "%.1f"|format(cafe.avg_scores.overall) }}</span>
+              <span class="text-xs text-coffee/40 ml-1">({{ cafe.review_count }})</span>
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      {% else %}
+        <!-- Placeholder cards when no data -->
+        {% for i in range(5) %}
+        <div class="cafe-card rounded-2xl overflow-hidden bg-cream-dark flex-shrink-0">
+          <div class="h-44 bg-gradient-to-br from-caramel/20 to-brown/10 flex items-center justify-center">
+            <span class="text-3xl opacity-30">☕</span>
+          </div>
+          <div class="p-4">
+            <div class="h-4 bg-brown/10 rounded mb-2"></div>
+            <div class="h-3 bg-brown/5 rounded w-2/3"></div>
+          </div>
+        </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+    <a href="/explore?sort=rating" class="btn-outline text-sm mt-6 inline-block md:hidden">查看全部 →</a>
+  </div>
+</section>
+
+
+<!-- ===== BRAND STORY — Section 1 ===== -->
+<section class="py-20 px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+      <!-- Text -->
+      <div class="reveal">
+        <p class="text-caramel text-xs font-semibold tracking-widest uppercase mb-4">為什麼選擇 CafeVibe</p>
+        <h2 class="font-serif text-4xl md:text-5xl font-bold text-coffee leading-[1.2] mb-6">
+          不只是一杯咖啡，<br/>
+          <span class="text-brown italic">是屬於你的角落</span>
+        </h2>
+        <div class="section-divider"></div>
+        <p class="text-coffee/70 leading-relaxed mb-8 text-base">
+          每個人都有自己最適合的咖啡廳。有人需要安靜角落寫作頁，有人在找韓系氛圍拍美照，有人想要不限時的空間討論 project。CafeVibe 用精準標籤篩選與多維度評分，幫你找到那間值得你造訪的店。
+        </p>
+        <div class="grid grid-cols-3 gap-6 mb-8">
+          <div class="text-center">
+            <div class="font-serif text-3xl font-bold text-brown mb-1">100+</div>
+            <div class="text-xs text-coffee/50 font-medium">收錄咖啡廳</div>
+          </div>
+          <div class="text-center">
+            <div class="font-serif text-3xl font-bold text-brown mb-1">1.2K+</div>
+            <div class="text-xs text-coffee/50 font-medium">真實評論</div>
+          </div>
+          <div class="text-center">
+            <div class="font-serif text-3xl font-bold text-brown mb-1">850+</div>
+            <div class="text-xs text-coffee/50 font-medium">跑咖會員</div>
+          </div>
+        </div>
+        <a href="/explore" class="btn-primary">開始探索 →</a>
+      </div>
+      <!-- Image collage -->
+      <div class="reveal grid grid-cols-2 gap-3">
+        <div class="rounded-2xl overflow-hidden" style="aspect-ratio:1/1;">
+          <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&q=80" alt="咖啡廳氛圍" class="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+        </div>
+        <div class="rounded-2xl overflow-hidden" style="aspect-ratio:1/1;">
+          <img src="https://images.unsplash.com/photo-1511920170033-f8396924c348?w=600&q=80" alt="咖啡" class="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+        </div>
+        <div class="rounded-2xl overflow-hidden" style="aspect-ratio:1/1;">
+          <img src="https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=600&q=80" alt="甜點" class="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+        </div>
+        <div class="rounded-2xl overflow-hidden" style="aspect-ratio:1/1;">
+          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&q=80" alt="拿鐵拉花" class="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== COMMUNITY CTA — dark section ===== -->
+<section class="bg-coffee py-20 px-6 lg:px-8 relative overflow-hidden">
+  <!-- Decorative circles -->
+  <div class="absolute -top-20 -right-20 w-80 h-80 rounded-full border border-caramel/10"></div>
+  <div class="absolute -bottom-10 -left-10 w-56 h-56 rounded-full border border-caramel/10"></div>
+
+  <div class="max-w-7xl mx-auto relative z-10">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <!-- Right: Images -->
+      <div class="reveal order-2 lg:order-1 grid grid-cols-2 gap-3">
+        {% if hot_meetups %}
+          {% for meetup in hot_meetups[:2] %}
+          <div class="rounded-2xl overflow-hidden bg-brown/40 p-4">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-7 h-7 rounded-full bg-caramel flex items-center justify-center text-cream text-xs font-bold">
+                {{ (meetup.organizer.display_name or meetup.organizer.username)[:1].upper() }}
+              </div>
+              <span class="text-cream/80 text-xs font-medium">{{ meetup.organizer.display_name or meetup.organizer.username }}</span>
+            </div>
+            <h4 class="text-cream font-serif font-semibold text-sm mb-1">{{ meetup.title }}</h4>
+            <p class="text-cream/50 text-xs">📍 {{ meetup.cafe.name }}</p>
+            <div class="flex items-center gap-2 mt-3">
+              <span class="text-caramel text-xs font-semibold">{{ meetup.current_count }}/{{ meetup.max_members }} 人</span>
+              <span class="tag-pill bg-matcha/20 text-matcha text-[10px]">招募中</span>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="rounded-2xl bg-brown/40 p-4">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-7 h-7 rounded-full bg-caramel flex items-center justify-center text-cream text-xs font-bold">A</div>
+              <span class="text-cream/80 text-xs">Annie Wang</span>
+            </div>
+            <h4 class="text-cream font-serif font-semibold text-sm mb-1">找人一起拍咖啡廳美照📸</h4>
+            <p class="text-cream/50 text-xs">📍 Cama Coffee 中山店</p>
+            <div class="mt-3"><span class="tag-pill bg-matcha/20 text-matcha text-[10px]">1/4 招募中</span></div>
+          </div>
+          <div class="rounded-2xl bg-brown/40 p-4 mt-8">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-7 h-7 rounded-full bg-brown flex items-center justify-center text-cream text-xs font-bold">B</div>
+              <span class="text-cream/80 text-xs">Brian Chen</span>
+            </div>
+            <h4 class="text-cream font-serif font-semibold text-sm mb-1">側錄咖啡廳 + 討論 AI 論文</h4>
+            <p class="text-cream/50 text-xs">📍 Simple Kaffa 興波</p>
+            <div class="mt-3"><span class="tag-pill bg-matcha/20 text-matcha text-[10px]">2/4 招募中</span></div>
+          </div>
+        {% endif %}
+      </div>
+      <!-- Left: Text -->
+      <div class="reveal order-1 lg:order-2">
+        <p class="text-caramel text-xs font-semibold tracking-widest uppercase mb-4">跑咖友社群</p>
+        <h2 class="font-serif text-4xl md:text-5xl font-bold text-cream leading-[1.2] mb-6">
+          一個人跑咖，<br/>
+          <span class="text-caramel italic">很無聊嗎？</span>
+        </h2>
+        <div class="w-12 h-0.5 bg-caramel mb-6"></div>
+        <p class="text-cream/60 leading-relaxed mb-8">
+          在 CafeVibe，你可以在任一家咖啡廳發起揪團，設定你的目的標籤 — 互拍、讀書、開會、聊 K-pop — 等待同好人加入。
+        </p>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <a href="/meetups" class="btn-primary">查看揪團佈告欄</a>
+          {% if current_user %}
+          <a href="/profile" class="btn-outline !border-cream/30 !text-cream hover:!bg-cream/10">我的口袋名單 →</a>
+          {% else %}
+          <a href="/register" class="btn-outline !border-cream/30 !text-cream hover:!bg-cream/10">立即註冊</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== NEW CAFES GRID ===== -->
+<section class="py-20 px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex items-end justify-between mb-8 reveal">
+      <div>
+        <p class="text-caramel text-xs font-semibold tracking-widest uppercase mb-2">最新收錄</p>
+        <h2 class="font-serif text-3xl md:text-4xl font-bold text-coffee">New Arrivals</h2>
+        <div class="section-divider"></div>
+      </div>
+      <a href="/explore" class="btn-outline text-sm hidden md:inline-block">探索全部 →</a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {% if newest_cafes %}
+        {% for cafe in newest_cafes %}
+        <a href="/cafe/{{ cafe.slug }}" class="card-lift rounded-2xl overflow-hidden bg-white shadow-sm group block reveal" style="transition-delay: {{ loop.index0 * 80 }}ms">
+          <div class="relative overflow-hidden" style="aspect-ratio:4/3;">
+            {% if cafe.photos %}
+              <img src="{{ cafe.photos[0].url }}" alt="{{ cafe.name }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+            {% elif cafe.cover_image_url %}
+              <img src="{{ cafe.cover_image_url }}" alt="{{ cafe.name }}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+            {% else %}
+              <div class="w-full h-full bg-gradient-to-br from-cream-dark to-caramel/20 flex items-center justify-center">
+                <span class="text-3xl">☕</span>
+              </div>
+            {% endif %}
+            <div class="card-gradient absolute inset-0"></div>
+            <div class="absolute top-3 right-3">
+              <span class="tag-pill bg-cream/90 text-coffee text-[10px] shadow-sm">New</span>
+            </div>
+          </div>
+          <div class="p-4">
+            <h3 class="font-serif font-semibold text-coffee mb-1 group-hover:text-brown transition-colors line-clamp-1">{{ cafe.name }}</h3>
+            <div class="flex flex-wrap gap-1 mb-2">
+              {% for tag in cafe.tags[:2] %}
+              <span class="tag-pill bg-caramel/10 text-caramel text-[10px]">{{ tag.name }}</span>
+              {% endfor %}
+            </div>
+            <p class="text-xs text-coffee/40">{{ cafe.district or cafe.city }}</p>
+          </div>
+        </a>
+        {% endfor %}
+      {% else %}
+        {% for i in range(4) %}
+        <div class="rounded-2xl overflow-hidden bg-cream-dark reveal">
+          <div class="bg-gradient-to-br from-caramel/10 to-brown/5 flex items-center justify-center" style="aspect-ratio:4/3;">
+            <span class="text-2xl opacity-20">☕</span>
+          </div>
+          <div class="p-4">
+            <div class="h-4 bg-brown/10 rounded mb-2"></div>
+            <div class="h-3 bg-brown/5 rounded w-2/3"></div>
+          </div>
+        </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+
+<!-- ===== HOW IT WORKS ===== -->
+<section class="py-20 px-6 lg:px-8 bg-cream-dark">
+  <div class="max-w-5xl mx-auto text-center">
+    <div class="reveal">
+      <p class="text-caramel text-xs font-semibold tracking-widest uppercase mb-3">使用說明</p>
+      <h2 class="font-serif text-3xl md:text-4xl font-bold text-coffee mb-4">三步驟，找到你的咖啡廳</h2>
+      <div class="section-divider mx-auto"></div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
+      {% for step in [
+        ('01', '精準篩選', '用風格、餐點、實用標籤交叉篩選，搭配多維度評分，快速找到最適合的店。', '🏷️'),
+        ('02', '線上預約', '直接在詳細頁選日期、時段與人數，一鍵送出預約，不用再打電話詢問。', '📅'),
+        ('03', '揪咖友同行', '在咖啡廳頁面發起揪團，設定目的標籤，等待跑咖族報名加入。', '👥'),
+      ] %}
+      <div class="reveal" style="transition-delay: {{ loop.index0 * 120 }}ms">
+        <div class="w-16 h-16 rounded-2xl bg-brown/5 flex items-center justify-center text-2xl mx-auto mb-4">{{ step[3] }}</div>
+        <div class="font-serif text-5xl font-bold text-caramel/20 mb-2">{{ step[0] }}</div>
+        <h3 class="font-serif text-xl font-bold text-coffee mb-3">{{ step[1] }}</h3>
+        <p class="text-coffee/60 text-sm leading-relaxed">{{ step[2] }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="mt-12 reveal">
+      {% if current_user %}
+      <a href="/explore" class="btn-primary text-base px-10 py-4">繼續探索咖啡廳 →</a>
+      {% else %}
+      <a href="/register" class="btn-primary text-base px-10 py-4">立即免費加入</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+  // Set initial states (隱藏 + 偏移)
+  gsap.set('#hero-eyebrow', { opacity: 0, y: -10 });
+  gsap.set('#hero-title',   { opacity: 0, y: 50 });
+  gsap.set('#hero-sub',     { opacity: 0, y: 20 });
+  gsap.set('#hero-search',  { opacity: 0, y: 20 });
+  gsap.set('#hero-tags',    { opacity: 0, y: 10 });
+
+  // Hero entrance animation (全部用 .to() 確保結束後保持可見)
+  gsap.timeline({ delay: 0.2 })
+    .to('#hero-eyebrow', { opacity: 1, y: 0, duration: 0.7, ease: 'power2.out' }, 0)
+    .to('#hero-title',   { opacity: 1, y: 0, duration: 0.9, ease: 'power3.out' }, 0.2)
+    .to('#hero-sub',     { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 0.6)
+    .to('#hero-search',  { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }, 0.8)
+    .to('#hero-tags',    { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 1.0);
+</script>
+{% endblock %}

@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}探索咖啡廳 — CafeVibe{% endblock %}
+{% block og_title %}探索咖啡廳 — CafeVibe{% endblock %}
+{% block og_description %}依風格、地區、氛圍篩選台灣咖啡廳，找到你下一個完美的跑咖目的地。{% endblock %}
+{% block twitter_title %}探索咖啡廳 — CafeVibe{% endblock %}
+{% block twitter_description %}依風格、地區、氛圍篩選台灣咖啡廳，找到你下一個完美的跑咖目的地。{% endblock %}
+
+{% block extra_head %}
+<style>
+  .sidebar { min-width: 260px; max-width: 260px; }
+  .tag-check:checked + label { background: #5C2D1E; color: #FAF6F1; border-color: #5C2D1E; }
+  .cafe-grid-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+  .cafe-grid-card:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(44,24,16,0.13); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pt-20 min-h-screen">
+
+  <!-- Page Header -->
+  <div class="bg-coffee text-cream py-12 px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+      <h1 class="font-serif text-4xl md:text-5xl font-bold mb-3">探索咖啡廳</h1>
+      <p class="text-cream/60 text-base">用標籤找到最適合你的那一間</p>
+    </div>
+  </div>
+
+  <!-- Search bar -->
+  <div class="bg-cream-dark border-b border-brown/10 sticky top-16 lg:top-20 z-30">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8 py-3">
+      <form method="get" action="/explore" id="filter-form" class="flex gap-3 items-center">
+        <div class="flex-1 flex items-center gap-2 bg-white rounded-xl px-4 py-2.5 border border-brown/12 focus-within:ring-2 focus-within:ring-caramel/30">
+          <svg class="w-4 h-4 text-coffee/40 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input type="text" name="q" value="{{ query }}" placeholder="搜尋店名、地區..." class="flex-1 bg-transparent text-coffee text-sm outline-none placeholder-coffee/35" />
+        </div>
+        <select name="sort" onchange="this.form.submit()" class="bg-white text-coffee text-sm px-4 py-2.5 rounded-xl border border-brown/12 outline-none cursor-pointer focus:ring-2 focus:ring-caramel/30">
+          <option value="newest" {% if sort=='newest' %}selected{% endif %}>最新收錄</option>
+          <option value="rating" {% if sort=='rating' %}selected{% endif %}>評分最高</option>
+          <option value="reviews" {% if sort=='reviews' %}selected{% endif %}>評論最多</option>
+        </select>
+        <!-- Preserve selected tags -->
+        {% for t in selected_tags %}
+        <input type="hidden" name="tags" value="{{ t }}" />
+        {% endfor %}
+        <button type="submit" class="btn-primary !py-2.5 !px-5 text-sm">搜尋</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-6 lg:px-8 py-8">
+    <div class="flex gap-8">
+
+      <!-- ===== LEFT SIDEBAR — Tag Filters ===== -->
+      <aside class="sidebar hidden lg:block flex-shrink-0">
+        <div class="sticky top-36 bg-white rounded-2xl p-5 shadow-sm border border-brown/8">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-coffee text-sm">篩選標籤</h3>
+            {% if selected_tags %}
+            <a href="/explore" class="text-xs text-caramel hover:text-brown transition-colors">清除全部</a>
+            {% endif %}
+          </div>
+
+          <form method="get" action="/explore" id="tag-form">
+            <input type="hidden" name="q" value="{{ query }}" />
+            <input type="hidden" name="sort" value="{{ sort }}" />
+
+            {% set category_names = {'style': '風格', 'food': '餐點', 'practical': '實用'} %}
+            {% set category_icons = {'style': '🎨', 'food': '🍽️', 'practical': '⚡'} %}
+
+            {% for cat, cat_tags in tag_groups.items() %}
+            <div class="mb-5">
+              <p class="text-xs font-semibold text-coffee/50 uppercase tracking-wider mb-2.5">
+                {{ category_icons.get(cat, '') }} {{ category_names.get(cat, cat) }}
+              </p>
+              <div class="flex flex-col gap-1.5">
+                {% for tag in cat_tags %}
+                <label class="flex items-center gap-2.5 cursor-pointer group">
+                  <input type="checkbox" name="tags" value="{{ tag.slug }}"
+                    {% if tag.slug in selected_tags %}checked{% endif %}
+                    onchange="document.getElementById('tag-form').submit()"
+                    class="w-4 h-4 rounded border-brown/30 text-brown accent-brown cursor-pointer" />
+                  <span class="text-sm text-coffee/80 group-hover:text-brown transition-colors">
+                    {{ tag.icon }} {{ tag.name }}
+                  </span>
+                </label>
+                {% endfor %}
+              </div>
+            </div>
+            {% endfor %}
+          </form>
+        </div>
+      </aside>
+
+      <!-- ===== RIGHT — Cafe Grid ===== -->
+      <main class="flex-1 min-w-0">
+        <!-- Mobile tag pills -->
+        <div class="lg:hidden mb-4 overflow-x-auto flex gap-2 pb-2 -mx-1 px-1 scrollbar-hide">
+          {% for cat, cat_tags in tag_groups.items() %}
+            {% for tag in cat_tags %}
+            <a href="/explore?tags={{ tag.slug }}&q={{ query }}"
+               class="tag-pill flex-shrink-0 border {% if tag.slug in selected_tags %}bg-brown text-cream border-brown{% else %}bg-white border-brown/15 text-coffee{% endif %}">
+              {{ tag.icon }} {{ tag.name }}
+            </a>
+            {% endfor %}
+          {% endfor %}
+        </div>
+
+        <!-- Result count -->
+        <div class="flex items-center justify-between mb-5">
+          <p class="text-sm text-coffee/60">
+            找到 <span class="font-semibold text-coffee">{{ total }}</span> 間咖啡廳
+            {% if selected_tags %} · 已篩選 {{ selected_tags|length }} 個標籤{% endif %}
+          </p>
+        </div>
+
+        {% if cafes %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          {% for cafe in cafes %}
+          <a href="/cafe/{{ cafe.slug }}" class="cafe-grid-card bg-white rounded-2xl overflow-hidden shadow-sm group block">
+            <!-- Image -->
+            <div class="relative overflow-hidden" style="aspect-ratio:4/3;">
+              {% if cafe.photos %}
+                <img src="{{ cafe.photos[0].url }}" alt="{{ cafe.name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+              {% elif cafe.cover_image_url %}
+                <img src="{{ cafe.cover_image_url }}" alt="{{ cafe.name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+              {% else %}
+                <div class="w-full h-full bg-gradient-to-br from-cream-dark to-caramel/20 flex items-center justify-center">
+                  <span class="text-4xl opacity-40">☕</span>
+                </div>
+              {% endif %}
+              <div class="card-gradient absolute inset-0"></div>
+              <!-- Score badge -->
+              {% set score = cafe.avg_scores.overall %}
+              {% if score > 0 %}
+              <div class="absolute top-3 right-3 bg-cream/95 backdrop-blur-sm rounded-xl px-2.5 py-1 flex items-center gap-1 shadow-sm">
+                <span class="star-rating text-xs">★</span>
+                <span class="text-xs font-bold text-coffee">{{ "%.1f"|format(score) }}</span>
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Content -->
+            <div class="p-4">
+              <h3 class="font-serif font-semibold text-coffee mb-1 group-hover:text-brown transition-colors line-clamp-1 text-base">{{ cafe.name }}</h3>
+              <p class="text-xs text-coffee/50 mb-2.5 flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                {{ cafe.district or cafe.city }}
+              </p>
+              <!-- Tags -->
+              <div class="flex flex-wrap gap-1 mb-3">
+                {% for tag in cafe.tags[:3] %}
+                <span class="tag-pill bg-caramel/10 text-caramel text-[10px]">{{ tag.name }}</span>
+                {% endfor %}
+              </div>
+              <!-- Bottom row -->
+              <div class="flex items-center justify-between pt-2.5 border-t border-brown/8">
+                <div class="flex items-center gap-1">
+                  <span class="star-rating text-sm">★</span>
+                  <span class="text-sm font-semibold text-coffee">{{ "%.1f"|format(cafe.avg_scores.overall) if cafe.avg_scores.overall > 0 else '—' }}</span>
+                  <span class="text-xs text-coffee/40">({{ cafe.review_count }})</span>
+                </div>
+                {% if cafe.opening_hours %}
+                <p class="text-xs text-coffee/40 truncate max-w-[120px]">{{ cafe.opening_hours.split('，')[0] if '，' in cafe.opening_hours else cafe.opening_hours[:15] }}</p>
+                {% endif %}
+              </div>
+            </div>
+          </a>
+          {% endfor %}
+        </div>
+
+        {% else %}
+        <!-- Empty state -->
+        <div class="flex flex-col items-center justify-center py-24 text-center">
+          <div class="text-6xl mb-4 opacity-30">☕</div>
+          <h3 class="font-serif text-xl font-semibold text-coffee mb-2">找不到符合的咖啡廳</h3>
+          <p class="text-coffee/50 text-sm mb-6">試試調整篩選條件，或清除標籤重新搜尋</p>
+          <a href="/explore" class="btn-outline">清除所有篩選</a>
+        </div>
+        {% endif %}
+      </main>
+    </div>
+  </div>
+</div>
+{% endblock %}

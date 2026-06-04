@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(Copy-Item .env.example .env)",
+      "Bash(pip install *)",
+      "Bash(pip show *)",
+      "Bash(python -c \"from app.models import *; print\\('Models OK'\\)\")",
+      "Bash(python -c \"from main import app; print\\('App OK'\\)\")",
+      "Bash(python init_db.py)",
+      "Bash(python seed.py)",
+      "Bash(uvicorn main:app --reload --host 0.0.0.0 --port 8000)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/)",
+      "Bash(python -c ' *)",
+      "Bash(findstr /v \"bcrypt\\\\|passlib\\\\|AttributeError\\\\|Traceback\\\\|File \\\\\"\")",
+      "PowerShell(taskkill *)"
+    ]
+  }
+}

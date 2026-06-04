@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+{% block title %}{{ meetup.title }} — CafeVibe{% endblock %}
+
+{% block content %}
+<div class="pt-24 pb-16 min-h-screen"
+     x-data="{
+       messages: [],
+       lastId: 0,
+       input: '',
+       sending: false,
+       async fetchMessages() {
+         const r = await fetch('/api/meetups/{{ meetup.id }}/messages?after=' + this.lastId);
+         if (!r.ok) return;
+         const data = await r.json();
+         if (data.length) {
+           this.messages.push(...data);
+           this.lastId = data[data.length - 1].id;
+           this.$nextTick(() => {
+             const box = document.getElementById('chatBox');
+             if (box) box.scrollTop = box.scrollHeight;
+           });
+         }
+       },
+       async sendMessage() {
+         if (!this.input.trim() || this.sending) return;
+         this.sending = true;
+         const fd = new FormData();
+         fd.append('content', this.input.trim());
+         await fetch('/api/meetups/{{ meetup.id }}/messages', { method: 'POST', body: fd });
+         this.input = '';
+         await this.fetchMessages();
+         this.sending = false;
+       }
+     }"
+     {% if is_member %}x-init="fetchMessages(); setInterval(() => fetchMessages(), 5000)"{% endif %}>
+
+  <div class="max-w-4xl mx-auto px-4 sm:px-6">
+
+    <!-- Back -->
+    <a href="/meetups" class="inline-flex items-center gap-1.5 text-sm text-coffee/50 hover:text-caramel mb-6 transition-colors">
+      ← 回到揪團佈告欄
+    </a>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+      <!-- ===== LEFT: 揪團資訊 + 聊天 ===== -->
+      <div class="lg:col-span-3 space-y-5">
+
+        <!-- 基本資訊卡 -->
+        <div class="bg-white rounded-3xl border border-brown/8 overflow-hidden shadow-sm">
+          {% if meetup.cafe.cover_image_url or meetup.cafe.photos %}
+          <div class="h-36 overflow-hidden relative">
+            {% set img = meetup.cafe.photos[0].url if meetup.cafe.photos else meetup.cafe.cover_image_url %}
+            <img src="{{ img }}" class="w-full h-full object-cover" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+            <a href="/cafe/{{ meetup.cafe.slug }}" class="absolute bottom-3 left-4 text-xs text-white/80 hover:text-white font-medium transition-colors">
+              📍 {{ meetup.cafe.name }} ↗
+            </a>
+          </div>
+          {% endif %}
+
+          <div class="p-5">
+            <!-- Status + title -->
+            <div class="flex items-start gap-3 mb-3">
+              <div class="flex-1">
+                {% if meetup.status.value == 'open' %}
+                <span class="text-[10px] bg-matcha/15 text-matcha px-2 py-0.5 rounded-full font-semibold">招募中</span>
+                {% elif meetup.status.value == 'full' %}
+                <span class="text-[10px] bg-caramel/15 text-caramel px-2 py-0.5 rounded-full font-semibold">已額滿</span>
+                {% else %}
+                <span class="text-[10px] bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full font-semibold">已結束</span>
+                {% endif %}
+                <h1 class="font-serif text-xl font-bold text-coffee mt-1.5 leading-snug">{{ meetup.title }}</h1>
+              </div>
+            </div>
+
+            <!-- Meta -->
+            <div class="space-y-2 text-sm text-coffee/60 mb-4">
+              <div class="flex items-center gap-2">
+                <span class="w-4 text-center">📅</span>
+                <span>{{ meetup.scheduled_at.strftime('%Y 年 %m 月 %d 日 %H:%M') }}</span>
+              </div>
+              {% if not meetup.cafe.cover_image_url and not meetup.cafe.photos %}
+              <div class="flex items-center gap-2">
+                <span class="w-4 text-center">📍</span>
+                <a href="/cafe/{{ meetup.cafe.slug }}" class="text-caramel hover:text-brown font-medium">{{ meetup.cafe.name }} ↗</a>
+              </div>
+              {% endif %}
+              <div class="flex items-center gap-2">
+                <span class="w-4 text-center">👤</span>
+                <span>由 <strong class="text-coffee">{{ meetup.organizer.display_name or meetup.organizer.username }}</strong> 發起</span>
+              </div>
+            </div>
+
+            <!-- Tags -->
+            {% if meetup.purpose_tags %}
+            <div class="flex flex-wrap gap-1.5 mb-4">
+              {% for tag in meetup.purpose_tags.split(',') %}
+              {% if tag.strip() %}
+              <span class="text-xs bg-caramel/10 text-caramel px-2.5 py-1 rounded-full">{{ tag.strip() }}</span>
+              {% endif %}
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Description -->
+            {% if meetup.description %}
+            <p class="text-sm text-coffee/70 leading-relaxed">{{ meetup.description }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- 聊天室 -->
+        {% if is_member %}
+        <div class="bg-white rounded-3xl border border-brown/8 shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-brown/8 flex items-center gap-2">
+            <span class="text-sm font-semibold text-coffee">💬 成員聊天室</span>
+            <span class="text-xs text-coffee/40">僅成員可見</span>
+          </div>
+
+          <!-- Messages -->
+          <div id="chatBox" class="flex flex-col gap-3 p-4 overflow-y-auto" style="height:320px;">
+            <template x-if="messages.length === 0">
+              <div class="flex-1 flex items-center justify-center text-coffee/30 text-sm">還沒有訊息，來打個招呼吧！</div>
+            </template>
+            <template x-for="msg in messages" :key="msg.id">
+              <div class="flex gap-2.5" :class="msg.is_me ? 'flex-row-reverse' : ''">
+                <div class="w-7 h-7 rounded-full bg-caramel flex items-center justify-center text-cream text-xs font-bold flex-shrink-0"
+                     x-text="msg.initial"></div>
+                <div class="max-w-[72%]" :class="msg.is_me ? 'items-end' : 'items-start'" style="display:flex;flex-direction:column;">
+                  <span class="text-[10px] text-coffee/40 mb-0.5"
+                        :class="msg.is_me ? 'text-right' : ''"
+                        x-text="msg.is_me ? msg.time : msg.user + ' · ' + msg.time"></span>
+                  <div class="px-3 py-2 rounded-2xl text-sm leading-relaxed break-words"
+                       :class="msg.is_me ? 'bg-brown text-cream rounded-tr-sm' : 'bg-cream-dark text-coffee rounded-tl-sm'"
+                       x-text="msg.content"></div>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Input -->
+          <div class="px-4 py-3 border-t border-brown/8 flex gap-2">
+            <input type="text" x-model="input" placeholder="輸入訊息…"
+                   @keydown.enter.prevent="sendMessage()"
+                   class="flex-1 px-3 py-2 rounded-xl border border-brown/15 text-sm text-coffee bg-cream focus:outline-none focus:ring-2 focus:ring-caramel/30 placeholder-coffee/30" />
+            <button @click="sendMessage()" :disabled="!input.trim() || sending"
+                    class="px-4 py-2 bg-brown text-cream text-sm font-semibold rounded-xl hover:bg-brown-light transition-colors disabled:opacity-40">
+              送出
+            </button>
+          </div>
+        </div>
+        {% else %}
+        <div class="bg-cream-dark rounded-2xl p-5 text-center border border-brown/8">
+          <p class="text-sm text-coffee/50">加入揪團後才能進入成員聊天室</p>
+        </div>
+        {% endif %}
+
+      </div>
+
+      <!-- ===== RIGHT: 成員 + 操作 ===== -->
+      <div class="lg:col-span-2 space-y-5">
+
+        <!-- 加入 / 取消 -->
+        {% if current_user %}
+          {% if is_organizer %}
+          <div class="bg-caramel/10 rounded-2xl p-4 text-center border border-caramel/20">
+            <p class="text-sm font-semibold text-caramel">你是這個揪團的發起人</p>
+          </div>
+          {% elif is_member %}
+          <form action="/api/meetups/{{ meetup.id }}/leave" method="post">
+            <button type="submit"
+                    onclick="return confirm('確定要退出此揪團嗎？')"
+                    class="w-full py-3 rounded-2xl border-2 border-red-200 text-red-400 hover:bg-red-50 text-sm font-semibold transition-colors">
+              退出揪團
+            </button>
+          </form>
+          {% elif meetup.is_joinable %}
+          <form action="/api/meetups/{{ meetup.id }}/join" method="post">
+            <button type="submit" class="w-full py-3 rounded-2xl bg-brown text-cream text-sm font-semibold hover:bg-brown-light transition-colors">
+              加入揪團
+            </button>
+          </form>
+          {% else %}
+          <div class="bg-gray-100 rounded-2xl p-4 text-center">
+            <p class="text-sm text-coffee/40 font-medium">揪團已額滿</p>
+          </div>
+          {% endif %}
+        {% else %}
+        <a href="/login" class="block w-full py-3 rounded-2xl bg-brown text-cream text-sm font-semibold text-center hover:bg-brown-light transition-colors">
+          登入後加入
+        </a>
+        {% endif %}
+
+        <!-- 成員列表 -->
+        <div class="bg-white rounded-2xl border border-brown/8 p-5">
+          <h3 class="text-xs font-semibold text-coffee/40 uppercase tracking-wide mb-4">
+            成員 ({{ meetup.members | length }} / {{ meetup.max_members }})
+          </h3>
+
+          <!-- 進度條 -->
+          <div class="h-1.5 bg-gray-100 rounded-full mb-4 overflow-hidden">
+            <div class="h-full bg-caramel rounded-full transition-all"
+                 style="width: {{ [((meetup.members | length) / meetup.max_members * 100)|int, 100]|min }}%"></div>
+          </div>
+
+          <div class="space-y-3">
+            {% for mem in meetup.members %}
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-caramel flex items-center justify-center text-cream text-sm font-bold flex-shrink-0">
+                {{ (mem.user.display_name or mem.user.username)[:1].upper() }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-coffee truncate">{{ mem.user.display_name or mem.user.username }}</p>
+                <p class="text-xs text-coffee/40">加入於 {{ mem.joined_at.strftime('%m/%d') if mem.joined_at else '' }}</p>
+              </div>
+              {% if mem.user_id == meetup.organizer_id %}
+              <span class="text-[10px] bg-caramel/15 text-caramel px-2 py-0.5 rounded-full font-semibold flex-shrink-0">發起人</span>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- 咖啡廳快捷 -->
+        <a href="/cafe/{{ meetup.cafe.slug }}"
+           class="flex items-center gap-3 bg-white rounded-2xl border border-brown/8 p-4 hover:border-caramel/30 transition-colors group">
+          <div class="w-10 h-10 rounded-xl overflow-hidden bg-cream-dark flex-shrink-0">
+            {% set img = meetup.cafe.photos[0].url if meetup.cafe.photos else meetup.cafe.cover_image_url %}
+            {% if img %}
+            <img src="{{ img }}" class="w-full h-full object-cover" />
+            {% else %}
+            <div class="w-full h-full flex items-center justify-center text-lg opacity-30">☕</div>
+            {% endif %}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-coffee group-hover:text-brown transition-colors truncate">{{ meetup.cafe.name }}</p>
+            <p class="text-xs text-coffee/40 truncate">{{ meetup.cafe.district or meetup.cafe.city }}</p>
+          </div>
+          <span class="text-caramel text-sm opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+        </a>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

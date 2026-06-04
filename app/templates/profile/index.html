@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}我的帳號 — CafeVibe{% endblock %}
+
+{% block content %}
+<div class="pt-16 lg:pt-20 min-h-screen">
+
+  <!-- Profile Header -->
+  <div class="bg-gradient-to-br from-coffee via-brown to-brown-dark text-cream">
+    <div class="max-w-5xl mx-auto px-6 lg:px-8 py-12">
+      <div class="flex items-center gap-5">
+        <!-- Avatar -->
+        <div class="w-20 h-20 rounded-full bg-caramel flex items-center justify-center text-cream text-3xl font-bold font-serif flex-shrink-0 ring-4 ring-cream/20">
+          {{ (current_user.display_name or current_user.username)[:1].upper() }}
+        </div>
+        <div>
+          <h1 class="font-serif text-3xl font-bold text-cream mb-1">{{ current_user.display_name or current_user.username }}</h1>
+          <p class="text-cream/50 text-sm">@{{ current_user.username }}</p>
+          {% if current_user.bio %}
+          <p class="text-cream/70 text-sm mt-2">{{ current_user.bio }}</p>
+          {% endif %}
+        </div>
+        <!-- Stats -->
+        <div class="hidden md:flex gap-8 ml-auto">
+          <div class="text-center">
+            <div class="font-serif text-2xl font-bold text-caramel">{{ favorites | length }}</div>
+            <div class="text-xs text-cream/50 mt-0.5">收藏</div>
+          </div>
+          <div class="text-center">
+            <div class="font-serif text-2xl font-bold text-caramel">{{ reviews | length }}</div>
+            <div class="text-xs text-cream/50 mt-0.5">評論</div>
+          </div>
+          <div class="text-center">
+            <div class="font-serif text-2xl font-bold text-caramel">{{ meetups_joined | length }}</div>
+            <div class="text-xs text-cream/50 mt-0.5">揪團</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab navigation -->
+  <div class="bg-white border-b border-brown/10 sticky top-16 lg:top-20 z-30">
+    <div class="max-w-5xl mx-auto px-6 lg:px-8">
+      <div class="flex gap-0 overflow-x-auto">
+        {% for t, label, icon in [
+          ('favorites',    '口袋名單', '❤'),
+          ('reservations', '預約紀錄', '📅'),
+          ('meetups',      '揪團紀錄', '👥'),
+          ('reviews',      '我的評論', '💬'),
+        ] %}
+        <a href="/profile?tab={{ t }}"
+           class="flex items-center gap-1.5 px-5 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors
+                  {% if tab == t %}border-brown text-brown{% else %}border-transparent text-coffee/50 hover:text-coffee{% endif %}">
+          {{ icon }} {{ label }}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+
+  <div class="max-w-5xl mx-auto px-6 lg:px-8 py-8">
+
+    <!-- ===== TAB: FAVORITES ===== -->
+    {% if tab == 'favorites' %}
+    <div>
+      <h2 class="font-serif text-xl font-bold text-coffee mb-5">我的口袋名單 ({{ favorites | length }})</h2>
+      {% if favorites %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {% for fav in favorites %}
+        <a href="/cafe/{{ fav.cafe.slug }}" class="card-lift bg-white rounded-2xl overflow-hidden shadow-sm group block border border-brown/8">
+          <div class="relative overflow-hidden" style="aspect-ratio:16/9;">
+            {% if fav.cafe.photos %}
+              <img src="{{ fav.cafe.photos[0].url }}" alt="{{ fav.cafe.name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            {% elif fav.cafe.cover_image_url %}
+              <img src="{{ fav.cafe.cover_image_url }}" alt="{{ fav.cafe.name }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            {% else %}
+              <div class="w-full h-full bg-gradient-to-br from-cream-dark to-caramel/20 flex items-center justify-center">
+                <span class="text-3xl opacity-40">☕</span>
+              </div>
+            {% endif %}
+            <div class="card-gradient absolute inset-0"></div>
+          </div>
+          <div class="p-4">
+            <h3 class="font-serif font-semibold text-coffee mb-1 group-hover:text-brown transition-colors line-clamp-1">{{ fav.cafe.name }}</h3>
+            <div class="flex flex-wrap gap-1 mb-2">
+              {% for tag in fav.cafe.tags[:2] %}<span class="tag-pill bg-caramel/10 text-caramel text-[10px]">{{ tag.name }}</span>{% endfor %}
+            </div>
+            <p class="text-xs text-coffee/40 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+              {{ fav.cafe.district or fav.cafe.city }}
+            </p>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="flex flex-col items-center justify-center py-20 text-center">
+        <p class="text-5xl mb-4 opacity-20">❤</p>
+        <h3 class="font-serif text-lg font-semibold text-coffee mb-2">還沒有收藏</h3>
+        <p class="text-coffee/50 text-sm mb-5">去探索咖啡廳，把喜歡的加入口袋名單吧！</p>
+        <a href="/explore" class="btn-primary">去探索</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ===== TAB: RESERVATIONS ===== -->
+    {% elif tab == 'reservations' %}
+    <div>
+      <h2 class="font-serif text-xl font-bold text-coffee mb-5">預約紀錄 ({{ reservations | length }})</h2>
+      {% if reservations %}
+      <div class="space-y-3">
+        {% for res in reservations %}
+        <div class="bg-white rounded-2xl p-5 border border-brown/8 flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-caramel/15 flex items-center justify-center text-xl flex-shrink-0">📅</div>
+          <div class="flex-1">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <h4 class="font-semibold text-coffee text-sm">{{ res.cafe.name }}</h4>
+                <p class="text-xs text-coffee/50 mt-0.5">{{ res.date.strftime('%Y/%m/%d') }} · {{ res.time_slot }} · {{ res.guests }} 人</p>
+                {% if res.notes %}<p class="text-xs text-coffee/40 mt-1">備注：{{ res.notes }}</p>{% endif %}
+              </div>
+              <span class="tag-pill text-[11px] flex-shrink-0
+                {% if res.status.value == 'confirmed' %}bg-matcha/15 text-matcha
+                {% elif res.status.value == 'pending' %}bg-caramel/15 text-caramel
+                {% elif res.status.value == 'cancelled' %}bg-red-50 text-red-400
+                {% else %}bg-coffee/10 text-coffee/60{% endif %}">
+                {% if res.status.value == 'confirmed' %}已確認
+                {% elif res.status.value == 'pending' %}待確認
+                {% elif res.status.value == 'cancelled' %}已取消
+                {% else %}已完成{% endif %}
+              </span>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="flex flex-col items-center justify-center py-20 text-center">
+        <p class="text-5xl mb-4 opacity-20">📅</p>
+        <h3 class="font-serif text-lg font-semibold text-coffee mb-2">還沒有預約紀錄</h3>
+        <p class="text-coffee/50 text-sm mb-5">找到喜歡的咖啡廳就可以線上預約座位</p>
+        <a href="/explore" class="btn-primary">去找咖啡廳</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ===== TAB: MEETUPS ===== -->
+    {% elif tab == 'meetups' %}
+    <div>
+      <h2 class="font-serif text-xl font-bold text-coffee mb-5">揪團紀錄 ({{ meetups_joined | length }})</h2>
+      {% if meetups_joined %}
+      <div class="space-y-3">
+        {% for mm in meetups_joined %}
+        <a href="/meetups/{{ mm.meetup.id }}" class="block bg-white rounded-2xl p-5 border border-brown/8 hover:border-caramel/30 hover:shadow-sm transition-all group">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-xl bg-brown/10 flex items-center justify-center text-lg flex-shrink-0">👥</div>
+            <div class="flex-1">
+              <div class="flex items-start justify-between">
+                <div>
+                  <h4 class="font-semibold text-coffee text-sm group-hover:text-brown transition-colors">{{ mm.meetup.title }}</h4>
+                  <p class="text-xs text-coffee/50 mt-0.5">
+                    📍 {{ mm.meetup.cafe.name }} ·
+                    {{ mm.meetup.scheduled_at.strftime('%Y/%m/%d %H:%M') }}
+                  </p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="tag-pill text-[11px]
+                    {% if mm.meetup.status.value == 'open' %}bg-matcha/15 text-matcha
+                    {% elif mm.meetup.status.value == 'full' %}bg-caramel/15 text-caramel
+                    {% else %}bg-coffee/10 text-coffee/50{% endif %}">
+                    {{ {'open':'招募中','full':'已額滿','closed':'已關閉','expired':'已結束'}.get(mm.meetup.status.value, mm.meetup.status.value) }}
+                  </span>
+                  <span class="text-caramel text-sm opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                </div>
+              </div>
+              <p class="text-xs text-coffee/40 mt-1">
+                發起人：{{ mm.meetup.organizer.display_name or mm.meetup.organizer.username }} ·
+                {{ mm.meetup.current_count }}/{{ mm.meetup.max_members }} 人
+              </p>
+            </div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="flex flex-col items-center justify-center py-20 text-center">
+        <p class="text-5xl mb-4 opacity-20">👥</p>
+        <h3 class="font-serif text-lg font-semibold text-coffee mb-2">還沒有參與揪團</h3>
+        <p class="text-coffee/50 text-sm mb-5">去咖啡廳頁面發起或加入揪團活動</p>
+        <a href="/explore" class="btn-primary">去探索</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ===== TAB: MY REVIEWS ===== -->
+    {% elif tab == 'reviews' %}
+    <div>
+      <h2 class="font-serif text-xl font-bold text-coffee mb-5">我的評論 ({{ reviews | length }})</h2>
+      {% if reviews %}
+      <div class="space-y-4">
+        {% for review in reviews %}
+        <div class="bg-white rounded-2xl p-5 border border-brown/8">
+          <div class="flex items-start justify-between gap-4 mb-3">
+            <div>
+              <a href="/cafe/{{ review.cafe.slug }}" class="font-serif font-semibold text-coffee hover:text-brown transition-colors">{{ review.cafe.name }}</a>
+              <p class="text-xs text-coffee/40 mt-0.5">{{ review.created_at.strftime('%Y/%m/%d') }}</p>
+            </div>
+            <div class="flex items-center gap-1 flex-shrink-0">
+              <span class="star-rating text-sm">★</span>
+              <span class="text-sm font-bold text-coffee">{{ "%.1f"|format(review.overall_score) }}</span>
+            </div>
+          </div>
+          {% if review.content %}
+          <p class="text-coffee/70 text-sm leading-relaxed">{{ review.content }}</p>
+          {% endif %}
+          <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-brown/8">
+            {% for dim, label in [('coffee','咖啡'),('dessert','甜點'),('ambience','氣氛'),('focus','專注')] %}
+            <span class="text-xs text-coffee/50 bg-cream-dark px-2.5 py-1 rounded-lg">
+              {{ label }} {{ review.score_dict.get(dim, 0)|int }}/5
+            </span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="flex flex-col items-center justify-center py-20 text-center">
+        <p class="text-5xl mb-4 opacity-20">💬</p>
+        <h3 class="font-serif text-lg font-semibold text-coffee mb-2">還沒有評論</h3>
+        <p class="text-coffee/50 text-sm mb-5">造訪咖啡廳後回來分享你的評分</p>
+        <a href="/explore" class="btn-primary">去探索</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}

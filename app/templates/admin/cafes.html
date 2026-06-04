@@ -1,0 +1,272 @@
+{% extends "admin/base.html" %}
+{% block title %}咖啡廳管理 — CafeVibe Admin{% endblock %}
+{% block page_title %}咖啡廳管理{% endblock %}
+
+{% block admin_content %}
+<div x-data="{
+  addOpen: false,
+  preview: null,
+  openPreview(cafe) { this.preview = cafe; },
+  closePreview() { this.preview = null; }
+}">
+
+  <!-- Header actions -->
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-sm text-coffee/50">共 {{ cafes | length }} 間咖啡廳</p>
+    <button @click="addOpen = true" class="inline-flex items-center gap-2 bg-brown text-cream text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-brown-light transition-colors">
+      + 新增咖啡廳
+    </button>
+  </div>
+
+  <!-- Table -->
+  <div class="bg-white rounded-2xl border border-brown/8 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-50">
+            <th class="text-left px-5 py-3.5 text-xs font-semibold text-coffee/50 uppercase tracking-wide">店家</th>
+            <th class="text-left px-5 py-3.5 text-xs font-semibold text-coffee/50 uppercase tracking-wide">地區</th>
+            <th class="text-left px-5 py-3.5 text-xs font-semibold text-coffee/50 uppercase tracking-wide">標籤</th>
+            <th class="text-left px-5 py-3.5 text-xs font-semibold text-coffee/50 uppercase tracking-wide">狀態</th>
+            <th class="text-left px-5 py-3.5 text-xs font-semibold text-coffee/50 uppercase tracking-wide">操作</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+          {% for cafe in cafes %}
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 bg-cream-dark">
+                  {% if cafe.cover_image_url %}
+                  <img src="{{ cafe.cover_image_url }}" class="w-full h-full object-cover" />
+                  {% else %}
+                  <div class="w-full h-full flex items-center justify-center text-sm opacity-30">☕</div>
+                  {% endif %}
+                </div>
+                <div>
+                  <p class="font-semibold text-coffee">{{ cafe.name }}</p>
+                  <p class="text-xs text-coffee/40">{{ cafe.slug }}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-5 py-3.5 text-coffee/70">{{ cafe.district or cafe.city }}</td>
+            <td class="px-5 py-3.5">
+              <div class="flex flex-wrap gap-1">
+                {% for tag in cafe.tags[:3] %}
+                <span class="inline-flex text-[10px] bg-caramel/10 text-caramel px-2 py-0.5 rounded-full">{{ tag.name }}</span>
+                {% endfor %}
+              </div>
+            </td>
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full {% if cafe.is_active %}bg-green-400{% else %}bg-red-300{% endif %}"></span>
+                <span class="text-xs text-coffee/60">{% if cafe.is_active %}上架中{% else %}已下架{% endif %}</span>
+                {% if cafe.is_featured %}<span class="text-xs bg-caramel/20 text-caramel px-2 py-0.5 rounded-full">精選</span>{% endif %}
+              </div>
+            </td>
+            <td class="px-5 py-3.5">
+              <div class="flex items-center gap-2">
+                <a href="/admin/cafes/{{ cafe.id }}/edit" class="text-xs text-brown hover:text-brown-light font-semibold">編輯</a>
+                <button @click='openPreview({
+                  id: {{ cafe.id }},
+                  name: {{ cafe.name | tojson }},
+                  slug: {{ cafe.slug | tojson }},
+                  district: {{ (cafe.district or "") | tojson }},
+                  address: {{ (cafe.address or "") | tojson }},
+                  phone: {{ (cafe.phone or "") | tojson }},
+                  opening_hours: {{ (cafe.opening_hours or "") | tojson }},
+                  description: {{ (cafe.description or "") | tojson }},
+                  cover: {{ (cafe.cover_image_url or "") | tojson }},
+                  is_active: {{ "true" if cafe.is_active else "false" }},
+                  is_featured: {{ "true" if cafe.is_featured else "false" }},
+                  tags: {{ cafe.tags | map(attribute="name") | list | tojson }},
+                  review_count: {{ cafe.review_count }}
+                })' class="text-xs text-caramel hover:text-brown font-semibold">預覽</button>
+                <form action="/admin/cafes/{{ cafe.id }}/toggle" method="post" class="inline">
+                  <button class="text-xs text-coffee/50 hover:text-coffee font-medium">
+                    {% if cafe.is_active %}下架{% else %}上架{% endif %}
+                  </button>
+                </form>
+                <form action="/admin/cafes/{{ cafe.id }}/delete" method="post" class="inline"
+                      onsubmit="return confirm('確定永久刪除「{{ cafe.name }}」？\n此操作將一併刪除所有照片、評論、預約、揪團，無法復原。')">
+                  <button class="text-xs text-red-400 hover:text-red-600 font-medium">刪除</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+  <!-- Preview Drawer -->
+  <div x-show="preview" x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="translate-x-full opacity-0"
+       x-transition:enter-end="translate-x-0 opacity-100"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="translate-x-0 opacity-100"
+       x-transition:leave-end="translate-x-full opacity-0"
+       class="fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-white shadow-2xl flex flex-col"
+       style="display:none;">
+
+    <!-- Backdrop -->
+    <div x-show="preview" @click="closePreview()"
+         class="fixed inset-0 bg-black/30 backdrop-blur-sm -z-10"></div>
+
+    <!-- Cover image -->
+    <div class="relative h-52 bg-cream-dark flex-shrink-0 overflow-hidden">
+      <template x-if="preview && preview.cover">
+        <img :src="preview.cover" class="w-full h-full object-cover" />
+      </template>
+      <template x-if="preview && !preview.cover">
+        <div class="w-full h-full flex items-center justify-center text-5xl opacity-20">☕</div>
+      </template>
+      <!-- badges -->
+      <div class="absolute top-3 left-3 flex gap-1.5">
+        <span x-show="preview && preview.is_featured"
+              class="text-xs bg-caramel text-white px-2.5 py-1 rounded-full font-semibold shadow">精選</span>
+        <span x-show="preview && preview.is_active"
+              class="text-xs bg-green-500 text-white px-2.5 py-1 rounded-full font-semibold shadow">上架中</span>
+        <span x-show="preview && !preview.is_active"
+              class="text-xs bg-red-400 text-white px-2.5 py-1 rounded-full font-semibold shadow">已下架</span>
+      </div>
+      <!-- close -->
+      <button @click="closePreview()"
+              class="absolute top-3 right-3 w-8 h-8 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center text-sm transition-colors">✕</button>
+    </div>
+
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto p-6 space-y-4">
+      <!-- Name & slug -->
+      <div>
+        <h2 class="text-xl font-bold text-coffee" x-text="preview && preview.name"></h2>
+        <p class="text-xs text-coffee/40 mt-0.5" x-text="preview && '/cafe/' + preview.slug"></p>
+      </div>
+
+      <!-- Tags -->
+      <div x-show="preview && preview.tags && preview.tags.length" class="flex flex-wrap gap-1.5">
+        <template x-for="tag in (preview ? preview.tags : [])">
+          <span class="text-xs bg-caramel/10 text-caramel px-2.5 py-1 rounded-full" x-text="tag"></span>
+        </template>
+      </div>
+
+      <!-- Info rows -->
+      <div class="space-y-2.5 text-sm">
+        <div x-show="preview && preview.district" class="flex gap-2 text-coffee/70">
+          <span class="flex-shrink-0 opacity-50">📍</span>
+          <span x-text="preview && preview.address"></span>
+        </div>
+        <div x-show="preview && preview.phone" class="flex gap-2 text-coffee/70">
+          <span class="flex-shrink-0 opacity-50">📞</span>
+          <span x-text="preview && preview.phone"></span>
+        </div>
+        <div x-show="preview && preview.opening_hours" class="flex gap-2 text-coffee/70">
+          <span class="flex-shrink-0 opacity-50">🕐</span>
+          <span x-text="preview && preview.opening_hours"></span>
+        </div>
+        <div x-show="preview && preview.review_count > 0" class="flex gap-2 text-coffee/70">
+          <span class="flex-shrink-0 opacity-50">💬</span>
+          <span x-text="preview && preview.review_count + ' 則評論'"></span>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div x-show="preview && preview.description">
+        <p class="text-xs font-semibold text-coffee/40 uppercase tracking-wide mb-1.5">簡介</p>
+        <p class="text-sm text-coffee/70 leading-relaxed" x-text="preview && preview.description"></p>
+      </div>
+    </div>
+
+    <!-- Footer actions -->
+    <div class="flex-shrink-0 p-4 border-t border-gray-100 flex gap-3">
+      <a :href="preview && '/cafe/' + preview.slug" target="_blank"
+         class="flex-1 text-center text-sm font-semibold bg-brown text-cream py-2.5 rounded-xl hover:bg-brown-light transition-colors">
+        開啟前台頁面
+      </a>
+      <button @click="closePreview()"
+              class="px-4 text-sm text-coffee/50 hover:text-coffee font-medium border border-gray-200 rounded-xl transition-colors">
+        關閉
+      </button>
+    </div>
+  </div>
+
+  <!-- Add Cafe Modal -->
+  <div x-show="addOpen" x-transition class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div @click.outside="addOpen = false" class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl p-8 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="font-serif text-xl font-bold text-coffee">新增咖啡廳</h3>
+        <button @click="addOpen = false" class="text-coffee/40 hover:text-coffee text-xl">✕</button>
+      </div>
+      <form action="/admin/cafes" method="post" enctype="multipart/form-data" class="space-y-4">
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-coffee/60 mb-1.5 uppercase tracking-wide">店名 *</label>
+            <input type="text" name="name" required class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-coffee/60 mb-1.5 uppercase tracking-wide">地區</label>
+            <input type="text" name="district" placeholder="大安區" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-coffee/60 mb-1.5 uppercase tracking-wide">地址 *</label>
+          <input type="text" name="address" required class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-coffee/60 mb-1.5 uppercase tracking-wide">電話</label>
+            <input type="text" name="phone" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-coffee/60 mb-1.5 uppercase tracking-wide">Instagram URL</label>
+            <input type="text" name="instagram_url" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-coffee/60 mb-1.5 uppercase tracking-wide">營業時間</label>
+          <input type="text" name="opening_hours" placeholder="週一至週五 09:00-21:00" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm focus:outline-none focus:ring-2 focus:ring-caramel/30" />
+        </div>
+
+
+        <div>
+          <label class="block text-xs font-semibold text-coffee/60 mb-1.5 uppercase tracking-wide">簡介</label>
+          <textarea name="description" rows="3" class="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-coffee text-sm resize-none focus:outline-none focus:ring-2 focus:ring-caramel/30"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-coffee/60 mb-2 uppercase tracking-wide">標籤</label>
+          <div class="flex flex-wrap gap-2">
+            {% for tag in tags %}
+            <label class="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" name="tag_ids" value="{{ tag.id }}" class="accent-brown" />
+              <span class="text-sm text-coffee">{{ tag.icon }} {{ tag.name }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-coffee/60 mb-1.5 uppercase tracking-wide">封面圖片</label>
+          <input type="file" name="cover" accept="image/*" class="w-full text-sm text-coffee/70 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-caramel/15 file:text-brown file:font-medium file:cursor-pointer hover:file:bg-caramel/25" />
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input type="checkbox" name="is_featured" id="featured" class="accent-brown w-4 h-4" />
+          <label for="featured" class="text-sm text-coffee font-medium cursor-pointer">設為精選推薦</label>
+        </div>
+
+        <button type="submit" class="w-full bg-brown text-cream font-semibold py-3.5 rounded-xl hover:bg-brown-light transition-colors text-sm">
+          新增咖啡廳
+        </button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

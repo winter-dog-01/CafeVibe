@@ -1,0 +1,64 @@
+{% extends "admin/base.html" %}
+{% block title %}評論審核 — CafeVibe Admin{% endblock %}
+{% block page_title %}評論審核{% endblock %}
+
+{% block admin_content %}
+<div class="bg-white rounded-2xl border border-brown/8 overflow-hidden">
+  <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+    <h2 class="font-semibold text-coffee text-sm">所有評論 ({{ reviews | length }})</h2>
+    <div class="flex gap-2">
+      <span class="text-xs bg-matcha/15 text-matcha px-3 py-1 rounded-full">
+        已核准：{{ reviews | selectattr('is_approved') | list | length }}
+      </span>
+      <span class="text-xs bg-caramel/15 text-caramel px-3 py-1 rounded-full">
+        待審核：{{ reviews | rejectattr('is_approved') | list | length }}
+      </span>
+    </div>
+  </div>
+  <div class="divide-y divide-gray-50">
+    {% for review in reviews %}
+    <div class="px-6 py-4 {% if not review.is_approved %}bg-amber-50/50{% endif %}">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex items-start gap-3 flex-1">
+          <div class="w-9 h-9 rounded-full bg-caramel flex items-center justify-center text-cream text-sm font-bold flex-shrink-0">
+            {{ (review.user.display_name or review.user.username)[:1].upper() }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-semibold text-coffee text-sm">{{ review.user.display_name or review.user.username }}</span>
+              <span class="text-coffee/40 text-xs">→</span>
+              <a href="/cafe/{{ review.cafe.slug }}" target="_blank" class="text-caramel text-sm hover:text-brown font-medium">{{ review.cafe.name }}</a>
+              <span class="text-xs text-coffee/40">{{ review.created_at.strftime('%Y/%m/%d %H:%M') }}</span>
+            </div>
+            <div class="flex items-center gap-3 mt-1 text-xs text-coffee/50">
+              {% for dim, label in [('coffee','咖啡'),('dessert','甜點'),('ambience','氣氛'),('focus','專注')] %}
+              <span>{{ label }} {{ review.score_dict.get(dim, 0)|int }}</span>
+              {% endfor %}
+            </div>
+            {% if review.content %}
+            <p class="text-coffee/70 text-sm mt-2 leading-relaxed">{{ review.content }}</p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          {% if not review.is_approved %}
+          <form action="/admin/reviews/{{ review.id }}/approve" method="post" class="inline">
+            <button class="text-xs px-3 py-1.5 rounded-lg bg-matcha/15 text-matcha hover:bg-matcha hover:text-white transition-colors font-medium">核准</button>
+          </form>
+          {% else %}
+          <span class="text-xs text-matcha font-medium">✓ 已核准</span>
+          {% endif %}
+          <form action="/admin/reviews/{{ review.id }}/delete" method="post" class="inline" onsubmit="return confirm('確定要刪除這則評論？')">
+            <button class="text-xs px-3 py-1.5 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 transition-colors font-medium">刪除</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="px-6 py-16 text-center">
+      <p class="text-coffee/40 text-sm">目前沒有評論</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

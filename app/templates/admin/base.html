@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Admin — CafeVibe{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: { DEFAULT: '#FAF6F1' },
+            brown: { DEFAULT: '#5C2D1E', light: '#7B3B2B' },
+            caramel: { DEFAULT: '#C17F3E' },
+            coffee: { DEFAULT: '#2C1810' },
+            matcha: { DEFAULT: '#3D6B4F' },
+            sidebar: '#1A0F0A',
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            serif: ['"Playfair Display"', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  {% block extra_head %}{% endblock %}
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .sidebar-link { display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:10px; font-size:0.875rem; font-weight:500; color:rgba(250,246,241,0.6); transition:all 0.2s; }
+    .sidebar-link:hover { background:rgba(250,246,241,0.08); color:#FAF6F1; }
+    .sidebar-link.active { background:rgba(193,127,62,0.2); color:#C17F3E; }
+    .stat-card { background:white; border-radius:16px; padding:20px; border:1px solid rgba(92,45,30,0.08); }
+  </style>
+</head>
+<body class="bg-gray-50 text-coffee" x-data="{ sideOpen: true }">
+<div class="flex min-h-screen">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="w-60 bg-sidebar text-cream flex-shrink-0 flex flex-col" :class="sideOpen ? 'block' : 'hidden md:block'">
+    <!-- Logo -->
+    <div class="p-6 border-b border-cream/10">
+      <a href="/admin" class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-caramel flex items-center justify-center">
+          <span class="text-cream text-sm font-serif font-bold">C</span>
+        </div>
+        <div>
+          <div class="font-serif font-bold text-cream text-base leading-none">CafeVibe</div>
+          <div class="text-[10px] text-cream/40 mt-0.5 uppercase tracking-wider">Admin Panel</div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 p-4 space-y-1">
+      <a href="/admin" class="sidebar-link {% if request.url.path == '/admin' or request.url.path == '/admin/' %}active{% endif %}">
+        <span>📊</span> 總覽
+      </a>
+      <a href="/admin/cafes" class="sidebar-link {% if '/admin/cafes' in request.url.path %}active{% endif %}">
+        <span>☕</span> 咖啡廳管理
+      </a>
+      <a href="/admin/reviews" class="sidebar-link {% if '/admin/reviews' in request.url.path %}active{% endif %}">
+        <span>💬</span> 評論審核
+      </a>
+      <a href="/admin/users" class="sidebar-link {% if '/admin/users' in request.url.path %}active{% endif %}">
+        <span>👥</span> 會員管理
+      </a>
+      <a href="/admin/meetups" class="sidebar-link {% if '/admin/meetups' in request.url.path %}active{% endif %}">
+        <span>🎉</span> 揪團管理
+      </a>
+      <div class="border-t border-cream/10 my-3"></div>
+      <a href="/" class="sidebar-link">
+        <span>🌐</span> 前往前台
+      </a>
+      <a href="/logout" class="sidebar-link">
+        <span>🚪</span> 登出
+      </a>
+    </nav>
+
+    <!-- Admin info -->
+    <div class="p-4 border-t border-cream/10">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-caramel/30 flex items-center justify-center text-caramel text-sm font-bold">
+          {{ (current_user.display_name or current_user.username)[:1].upper() }}
+        </div>
+        <div>
+          <p class="text-xs font-semibold text-cream">{{ current_user.display_name or current_user.username }}</p>
+          <p class="text-[10px] text-cream/40">Administrator</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <div class="flex-1 flex flex-col min-w-0">
+    <!-- Top bar -->
+    <header class="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
+      <div class="flex items-center gap-3">
+        <h1 class="font-semibold text-coffee text-lg">{% block page_title %}Dashboard{% endblock %}</h1>
+      </div>
+      <a href="/explore" target="_blank" class="text-xs text-coffee/50 hover:text-caramel transition-colors">前台預覽 ↗</a>
+    </header>
+
+    <main class="flex-1 p-6 lg:p-8">
+      {% block admin_content %}{% endblock %}
+    </main>
+  </div>
+
+</div>
+</body>
+</html>
