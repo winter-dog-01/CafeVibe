@@ -5,7 +5,7 @@ from app.models.cafe import Cafe, CafePhoto
 from app.models.tag import Tag
 from app.models.review import Review, ReviewScore
 from app.models.meetup import Meetup, MeetupStatus, MeetupMember
-from app.services.auth_service import get_password_hash
+from app.services.auth_service import hash_password as get_password_hash
 import app.models
 
 db = SessionLocal()
