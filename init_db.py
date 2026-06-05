@@ -10,7 +10,7 @@ def create_database():
     parts = url.split("://")[1]
     userpass, rest = parts.split("@")
     user = userpass.split(":")[0]
-    password = userpass.split(":")[1] if ":" in userpass else ""
+    password = userpass.split(":")[1] if ":" in userpass else ""ㄔㄟ
     hostport_db = rest
     if "/" in hostport_db:
         hostport, dbname = hostport_db.rsplit("/", 1)
